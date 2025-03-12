@@ -17,9 +17,9 @@
 </code></pre>
 
 <h2>Citation</h2>
-<p>The Bellhop program used for signal propagation is part of the Acoustics Toolbox and can be downloaded from <a href="https://oalib-acoustics.org/website_resources/AcousticsToolbox/versions/at/" target="_blank">Acoustics Toolbox</a>. Please cite the following reference when using this software:</p>
+<p>The Bellhop program used for signal propagation is part of the Acoustics Toolbox and can be downloaded from <a href="https://oalib.hlsresearch.com/AcousticsToolbox/" target="_blank">Acoustics Toolbox</a>. Please cite the following reference when using this software:</p>
 <blockquote>
-  <p><strong>Bellhop</strong> (2020). <em>Bellhop Acoustics Toolbox</em>. Retrieved from <a href="https://oalib-acoustics.org/website_resources/AcousticsToolbox/" target="_blank">https://oalib-acoustics.org/website_resources/AcousticsToolbox/</a>.</p>
+  <p><strong>Bellhop</strong> (2020). <em>Bellhop Acoustics Toolbox</em>. Retrieved from <a href="https://oalib.hlsresearch.com/AcousticsToolbox/" target="_blank">https://oalib-acoustics.org/website_resources/AcousticsToolbox/</a>.</p>
 </blockquote>
 
 <h2>Contributing</h2>
