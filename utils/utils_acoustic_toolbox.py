@@ -62,14 +62,15 @@ def write_env_file(root, env_name, f_cen, z_source, z_reception, sound_speed, zw
         fid.write(f"'{env_name}'\n")  # Environment file name
         fid.write(f"{f_cen}\n")  # Central frequency
         fid.write("1\n")  # Number of layers (single layer for water column)
-        fid.write("'CVWF'\n")  # Model type (C = constant, V = variable, W = water, F = fluid bottom)
+        fid.write("'CVWF'\n")  # See file: ./acoustic_toolbox/doc/EnvironmentalFile.html
         fid.write("19.3 35. 8. 50.\n")  # Temperature, Salinity, pH, Depth of bar (fixed values)
+        #TODO rentrer dynamiquement les valeurs CROCO + commentaires
         fid.write(f"0 0.0 {zmax}\n")  # Depth range (0 to zmax)
 
         # Write sound speed profile
         for z, c in zip(zw, sound_speed):
             fid.write(f"{z} {c} /\n")
-
+        #TODO erreur ici, on écrit mal le profil de celerité il semble, il faut le point le + profond de la radiale et en déduire le profil de c
         # Ensure the profile extends to zmax
         if zmax > zw[-1]:
             fid.write(f"{zmax} {sound_speed[-1]} /\n")

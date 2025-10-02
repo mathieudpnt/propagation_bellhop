@@ -9,8 +9,8 @@ import numpy as np
 from numpy.fft import ifft,fft
 from scipy.signal import chirp
 import os
-from utils_acoustic_toolbox import write_env_file,read_arrivals_asc
-from utils import FindPow2, Coef_Rbot2, Coef_Surf, Atten_FG, find_nearest, compute_soundspeed
+from utils.utils_acoustic_toolbox import write_env_file,read_arrivals_asc
+from utils.core_utils import FindPow2, Coef_Rbot2, Coef_Surf, Atten_FG, find_nearest, compute_soundspeed
 from pathlib import Path
 from netCDF4 import Dataset
 from collections import namedtuple

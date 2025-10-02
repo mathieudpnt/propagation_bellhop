@@ -20,7 +20,6 @@ Le simulateur - version "E" - effectue les opérations suivante:
             == Fig_NomSimu_2.png
     ** : le calcul des amplitudes a été réalisé par nos propres algos
         (disper geom, Atten,Coefs Ref ... )  car il semble que Bellhop ne gere pas cela correctement
-@author: xdemoulin
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,21 +31,21 @@ from matplotlib import gridspec
 from tqdm import tqdm
 from geopy.distance import geodesic
 
-from utils_acoustic_toolbox import read_shd, plotray
-from utils_simulation import read_croco, read_bathy, extract_bathy, compute_sound_speed, impulse_response, run_bellhop
+from utils.utils_acoustic_toolbox import read_shd, plotray
+from utils.utils_simu import read_croco, read_bathy, extract_bathy, compute_sound_speed, impulse_response, run_bellhop
 
 # %% Simulation parameters
 
 # signal emission position
 source = Series({
-    'lat': 48.51,
-    'lon': -5.15,
+    'lat': 48.48,
+    'lon': -4.9,
     'depth': 5,
     'type': 'whistle_D',
 })
 
 # day of year (Y+1) # TODO, QUESTION MT : Comment ça Y+1 ?
-day_number = 30+360
+day_number = 217+360
 # TODO, QUESTION MT: Pourquoi on rentre ces paramètres en dur alors qu'on utilise les profils CROCO après ?
 param_water = Series({
     'salinity': 35,
@@ -68,11 +67,12 @@ z_max = 250
 # TODO, QUESTION MD: à quoi cela correspond ?
 Dz = 0.25  # param technique pour CETIROISE
 
-root_f = Path(r'.\Figures_new')  # figure path
-bellhop_exe = Path(r"..Codes_Python\acoustic_toolbox\windows-bin-20201102\bellhop.exe")  # Bellhop executable path
-root_bh = Path(r'.\test')  # Bellhop output path
-bathy = Path(r'..\Data_Env\Bathy\MNT_FACADE_ATLANTIQUE_HOMONIM_PBMA\DONNEES\MNT_ATL100m_HOMONIM_WGS84_PBMA_ZNEG.asc')  # bathymetry data
-ncdf = Path(r'..\Data_Env\croco_out2.nc')  # CROCO model data
+ROOT = Path(r"L:\acoustock\Bioacoustique\PROPA")
+root_f = ROOT / Path(r'.\Figures')  # figure path
+bellhop_exe = ROOT / Path(r".\acoustic_toolbox\windows-bin-20201102\bellhop.exe")  # Bellhop executable path
+root_bh = ROOT / Path(r'.\test')  # Bellhop output path
+bathy = ROOT / Path(r'.\Data_Env\Bathy\MNT_FACADE_ATLANTIQUE_HOMONIM_PBMA\DONNEES\MNT_ATL100m_HOMONIM_WGS84_PBMA_ZNEG.asc')  # bathymetry data
+ncdf = ROOT / Path(r'.\Data_Env\croco_out2.nc')  # CROCO model data
 
 # %% Environment
 
@@ -81,18 +81,26 @@ lim_lat = [48.1, 48.7]
 lim_lon = [-5.5, -4.5]
 
 # bathymetry extraction
-[lat, lon, elev] = read_bathy(file=bathy.resolve(), lim_lat=lim_lat, lim_lon=lim_lon)
+[lat, lon, elev] = read_bathy(file=bathy, lim_lat=lim_lat, lim_lon=lim_lon)
 
 # croco extraction
 # TODO, QUESTION MT: Préciser le format de la variable data_ncdf et ce qu'il y a dedans
-data_ncdf = read_croco(file=ncdf.resolve())
+data_ncdf = read_croco(file=ncdf)
 
 # CETIROISE stations
 lon_OBS = -([5,5,4,5,4,4,5] + np.array([13,7,55,12,52,48,21]) / 60 + np.array([51,4,1,0,59,20,3]) / 3600)
 lat_OBS = 48 + np.array([31,31,29,23,27,29,27]) / 60 + np.array([11, 6, 6, 1, 19, 53, 3]) / 3600
 # TODO, QUESTION MT : Variable pas réutilisée ? + wrong value
 depth_OBS = [20] * len(lon_OBS)
-stations = DataFrame({'label': ['A','B','C','D','E','F','G'], 'lat': lat_OBS, 'lon': lon_OBS, 'depth': depth_OBS})
+stations = DataFrame(
+    {
+    'label': ['A','B','C','D','E','F','G'],
+    'lat': lat_OBS,
+    'lon': lon_OBS,
+    'depth': depth_OBS,
+    }
+)
+
 
 # distances and azimuths between source and stations
 # TODO, QUESTION MT : unité distance (km?) et azimuth (rad?)?
@@ -161,7 +169,7 @@ def main():
         # plt.grid()
         # plt.legend()
         # plt.xlim(1480, 1530)
-        # plt.ylim(100,0)
+        # plt.ylim(150,0)
         # plt.xticks(np.arange(1480, 1531, 10))
         # plt.show()
 
@@ -372,7 +380,7 @@ def main():
     ax1_1 = fig.add_subplot(gs[1, 1], projection='polar')
     np.clip(TTL, 35, 130, out=TTL)
     pc2 = ax1_1.contourf(theta, r, TTL)
-    fig.colorbar(pc2, orientation="vertical", label="Transmission loss (dB)")
+    fig.colorbar(pc2, orientation="vertical", label="Received level (dB)")
 
     plt.tight_layout()
     plt.show()
