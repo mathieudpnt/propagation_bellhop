@@ -221,22 +221,14 @@ def sound_speed_profile(method: str, yday: int, z, lon_ref: float, lat_ref: floa
     # Salinity (S), temperature (T) at the specified day of the year (yday) and location (lat_c0, lon_c0)
     salinity = croco_data.salinity[yday, :, idx_lat, idx_lon]  # Salinity profile
     temperature = croco_data.temperature[yday, :, idx_lat, idx_lon]  # Temperature profile
+    latitude = croco_data.lat[idx_lat, idx_lon]
 
     #TODO QUESTION MD: pourquoi ne pas utiliser les données profondeur CROCO ?
     z2 = abs(croco_data.depth[:, idx_lat, idx_lon])
     z_max = max(z2) - (max(z2) % 5)
     z_transect = np.linspace(0, z_max, 32)  # for compatibility with CROCO
-    pressure2 = 10 + z_transect
 
-    # Pressure (P) is calculated from depth (zw) in decibars (dBar)
-    # p = p_ref + (rho * g * z) / 1e4, assuming rho=1000 kg/m3 and g=10m/s2 then,
-    # P = 10 + z, where z is the depth in meters, assuming a reference pressure at 10 dBar for surface conditions
-    pressure = 10 + z
-
-    sound_speed = compute_sound_speed(salinity, temperature, pressure, equation=method)
-
-    return sound_speed[::-1]
-
+    return [compute_sound_speed(s=sal, t=temp, d=z_i, equation=method, lat=latitude) for sal, temp, z_i in zip(salinity, temperature, z)]
 
 # TODO, Question MD: Manque explication sur Bellhop, qu'est ce qui est fait dans cette fonction ? à quoi correspondent les calc I/E/A ?
 def run_bellhop(executable: Path, bellhop_dir: Path, filename: str, calc: str | list[str], z_max: int | float, source: pd.Series, station: pd.Series, dist: np.array, zb: Iterable, sound_speed: np.array, z_transect: np.array, param_seabed: pd.Series):

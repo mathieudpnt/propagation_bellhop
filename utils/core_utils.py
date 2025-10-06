@@ -33,7 +33,7 @@ def depth_to_pressure(z, lat):
 
     return hz * kz * 1000
 
-def compute_sound_speed(s:float, t:float, d:float, equation:str, lat: float | None = None):
+def compute_sound_speed(s:float, t:float, d:float, equation:str, lat:float | None = None):
     """
     Compute the speed of sound in seawater using different empirical equations.
 
