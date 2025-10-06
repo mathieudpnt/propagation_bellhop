@@ -218,19 +218,9 @@ def find_nearest(array, value):
 
 def Coef_Rbot(Para_1,Para_2,Fr):
       # Coef Ref fluide-fluide
-<<<<<<< Updated upstream
       C1 = Para_1[0] ; rho1 = Para_1[1]; At1 = Para_1[2]
       C2 = Para_2[0] ; rho2 = Para_2[1]; At2 = Para_2[2]
-=======
-      C1 = Para_1[0]
-      rho1 = Para_1[1]
-      At1 = Para_1[2]
 
-      C2 = Para_2[0]
-      rho2 = Para_2[1]
-      At2 = Para_2[2]
-
->>>>>>> Stashed changes
       Teta = np.linspace(0,90,181)
       w = 2*np.pi*Fr
       atp1 =	(At1*Fr)/(8.686*C1)
