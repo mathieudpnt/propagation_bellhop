@@ -10,7 +10,7 @@ from numpy.fft import ifft,fft
 from scipy.signal import chirp
 import os
 from utils.utils_acoustic_toolbox import write_env_file,read_arrivals_asc
-from utils.core_utils import FindPow2, Coef_Rbot2, Coef_Surf, Atten_FG, find_nearest, compute_soundspeed
+from utils.core_utils import FindPow2, Coef_Rbot2, Coef_Surf, Atten_FG, find_nearest, compute_sound_speed
 from pathlib import Path
 from netCDF4 import Dataset
 from collections import namedtuple
@@ -177,7 +177,7 @@ def extract_bathy(source: pd.Series, station: pd.Series, lat: np.ndarray, lon: n
     return zb, dist, z_transect, nb_layer
 
 
-def compute_sound_speed(method: str, yday: int, z, lon_ref: float, lat_ref: float, croco_data: namedtuple):
+def sound_speed_profile(method: str, yday: int, z, lon_ref: float, lat_ref: float, croco_data: namedtuple):
     """
     Computes the sound speed at specific depths based on environmental conditions from CROCO model output.
 
@@ -233,7 +233,7 @@ def compute_sound_speed(method: str, yday: int, z, lon_ref: float, lat_ref: floa
     # P = 10 + z, where z is the depth in meters, assuming a reference pressure at 10 dBar for surface conditions
     pressure = 10 + z
 
-    sound_speed = compute_soundspeed(salinity, temperature, pressure, equation=method)
+    sound_speed = compute_sound_speed(salinity, temperature, pressure, equation=method)
 
     return sound_speed[::-1]
 
