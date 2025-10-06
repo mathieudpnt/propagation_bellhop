@@ -11,28 +11,49 @@ Created on Tue Jun  6 07:45:28 2023
 
 @author: xdemoulin
 """
+from __future__ import annotations
+
+import math
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.fft import ifft,fft
 
 
-def compute_soundspeed(salinity:float, temperature:float, depth:float, equation:str):
+def depth_to_pressure(z, lat):
+    """Convert depth (m) to pressure (kPa) (Leroy & Parthiot, 1998)."""
+
+    g = 9.7803 * (1 + 5.3e-3 * math.sin(math.radians(lat))**2)
+
+    kz = (g - 2e-5 * z) / (9.80612 - 2e-5 * z)
+
+    hz = (1.00818e-2 * z
+          + 2.465e-8 * z**2
+          - 1.25e-13 * z**3
+          + 2.8e-19 * z**4)
+
+    return hz * kz * 1000
+
+def compute_sound_speed(s:float, t:float, d:float, equation:str, lat: float | None = None):
     """
-    Computes the speed of sound in seawater using different empirical equations.
+    Compute the speed of sound in seawater using different empirical equations.
 
     Parameters
     ----------
-    salinity : float
-               Salinity in ppt (practical salinity units).
-    temperature : float
-                  Temperature in degrees Celsius.
-    depth : float
-            Depth in meters (for Mackenzie) or Pressure in dBar (for other equations).
+    s : float
+        Salinity in ppt.
+    t : float
+        Temperature in degrees Celsius.
+    d : float
+        Depth in meters.
+    lat: float
+        Latitude in degrees.
     equation : str
-               The sound speed equation to use. Options are:
-               - "mackenzie" : Mackenzie (1981)
-               - "del_grosso" : Del Grosso (1974)
-               - "chen" : Chen and Millero (1977)
+        The sound speed equation to use. Options are:
+            - "mackenzie" : Mackenzie (1981)
+            - "del_grosso" : Del Grosso (1974)
+            - "chen" : Chen and Millero (1977)
+        For further details on the sound speed equations please read the following page:
+        http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
 
     Returns
     -------
@@ -40,56 +61,145 @@ def compute_soundspeed(salinity:float, temperature:float, depth:float, equation:
         Speed of sound in seawater (m/s).
     """
     if equation.lower() == "mackenzie":
-        # Mackenzie equation coefficients
-        sound_speed = (1402.392 + 4.591 * temperature - 5.304e-2 * temperature ** 2 + 2.374e-4 * temperature ** 3 +
-               1.340 * (salinity - 35) + 1.630e-2 * depth + 1.675e-7 * depth ** 2 -
-               1.025e-2 * temperature * (salinity - 35) - 7.139e-13 * temperature * depth ** 3)
+        return (1448.96
+         + 4.591 * t
+         - 5.304e-2 * (t ** 2)
+         + 2.374e-4 * (t ** 3)
+         + 1.340 * (s - 35)
+         + 1.630e-2 * d
+         + 1.675e-7 * (d ** 2)
+         - 1.025e-2 * t * (s - 35)
+         - 7.139e-13 * t * (d ** 3)
+                )
 
     elif equation.lower() == "del_grosso":
-        # Compute pressure in kg/cm²
-        XX = np.sin(np.radians(45))  # Assume latitude = 45° for gravity calculation
-        GR = 9.780318 * (1 + (5.2788e-3 + 2.36e-5 * XX) * XX) + 1.092e-6 * depth
-        P = depth / GR
 
-        # Del Grosso equation
-        C000 = 1402.392
-        DCT = (5.01109398873 - (5.50946843172e-1 - 2.21535969240e-3 * temperature) * temperature) * temperature
-        DCS = (1.32952290781 + 1.28955756844e-3 * salinity) * salinity
-        DCP = (0.156059257041 + (2.44998688441e-4 - 8.83392332513e-8 * P) * P) * P
-        DCSTP = (-1.27562783426e-2 * temperature * salinity + 6.35191613389e-3 * temperature * P -
-                 4.38031096213e-6 * temperature ** 3 * P - 1.61374495909e-8 * salinity ** 2 * P ** 2 +
-                 9.68403156410e-4 * temperature ** 2 * salinity - 3.40597039004e-3 * temperature * salinity * P)
+        if not lat:
+            msg = "`lat` must be provided."
+            raise ValueError(msg)
 
-        sound_speed = C000 + DCT + DCS + DCP + DCSTP
+        p = depth_to_pressure(d, lat) * 0.010197162129779  # convertion from dBar to kg.cm-2
+
+        # Coefficients
+        c000 = 1402.392
+
+        c_t1 = 0.5012285E1
+        c_t2 = -0.551184E-1
+        c_t3 = 0.221649E-3
+
+        c_s1 = 0.1329530E1
+        c_s2 = 0.1288598E-3
+
+        c_p1 = 0.1560592
+        c_p2 = 0.2449993E-4
+        c_p3 = -0.8833959E-8
+
+        c_s_t = -0.1275936E-1
+        c_t_p = 0.6353509E-2
+        c_t2_p2 = 0.2656174E-7
+        c_t_p2 = -0.1593895E-5
+        c_t_p3 = 0.5222483E-9
+        c_t3_p = -0.4383615E-6
+        c_s2_p2 = -0.1616745E-8
+        c_s_t2 = 0.9688441E-4
+        c_s2_t_p = 0.4857614E-5
+        c_s_t_p = -0.3406824E-3
+
+        # Terms calculation
+        delta_c_t = c_t1 * t + c_t2 * t**2 + c_t3 * t**3
+        delta_c_s = c_s1 * s + c_s2 * s**2
+        delta_c_p = c_p1 * p + c_p2 * p**2 + c_p3 * p**3
+        delta_c_s_t_p = (
+            c_t_p * t * p
+            + c_t3_p * t**3 * p
+            + c_t_p2 * t * p**2
+            + c_t2_p2 * t**2 * p**2
+            + c_t_p3 * t * p**3
+            + c_s_t * s * t
+            + c_s_t2 * s * t**2
+            + c_s_t_p * s * t * p
+            + c_s2_t_p * s**2 * t * p
+            + c_s2_p2 * s**2 * p**2
+        )
+
+        # Calculate the total speed of sound
+        return c000 + delta_c_t + delta_c_s + delta_c_p + delta_c_s_t_p
 
     elif equation.lower() == "chen":
-        # Chen and Millero equation
-        P = depth / 10.0  # Convert pressure to bars
-        SR = np.sqrt(np.abs(salinity))
 
-        depth = 1.727e-3 - 7.9836e-6 * P
-        B1 = 7.3637e-5 + 1.7945e-7 * temperature
-        B0 = -1.922e-2 - 4.42e-5 * temperature
-        B = B0 + B1 * P
+        if not lat:
+            msg = "`lat` must be provided."
+            raise ValueError(msg)
 
-        A3 = (-3.389e-13 * temperature + 6.649e-12) * temperature + 1.100e-10
-        A2 = ((7.988e-12 * temperature - 1.6002e-10) * temperature + 9.1041e-9) * temperature - 3.9064e-7
-        A1 = (((-2.0122e-10 * temperature + 1.0507e-8) * temperature - 6.4885e-8) * temperature - 1.2580e-5) * temperature + 9.4742e-5
-        A0 = (((-3.21e-8 * temperature + 2.006e-6) * temperature + 7.164e-5) * temperature - 1.262e-2) * temperature + 1.389
-        A = ((A3 * P + A2) * P + A1) * P + A0
+        p = depth_to_pressure(d, lat) / 100
 
-        C3 = (-2.3643e-12 * temperature + 3.8504e-10) * temperature - 9.7729e-9
-        C2 = (((1.0405e-12 * temperature - 2.5335e-10) * temperature + 2.5974e-8) * temperature - 1.7107e-6) * temperature + 3.1260e-5
-        C1 = (((-6.1185e-10 * temperature + 1.3621e-7) * temperature - 8.1788e-6) * temperature + 6.8982e-4) * temperature + 0.153563
-        C0 = ((((3.1464e-9 * temperature - 1.47800e-6) * temperature + 3.3420e-4) * temperature - 5.80852e-2) * temperature + 5.03711) * temperature + 1402.388
-        C = ((C3 * P + C2) * P + C1) * P + C0
+        # Coefficients
+        c_00 = 1402.388
+        c_01 = 5.03830
+        c_02 = -5.81090e-2
+        c_03 = 3.3432e-4
+        c_04 = -1.47797e-6
+        c_05 = 3.1419e-9
+        c_10 = 0.153563
+        c_11 = 6.8999e-4
+        c_12 = -8.1829e-6
+        c_13 = 1.3632e-7
+        c_14 = -6.1260e-10
+        c_20 = 3.1260e-5
+        c_21 = -1.7111e-6
+        c_22 = 2.5986e-8
+        c_23 = -2.5353e-10
+        c_24 = 1.0415e-12
+        c_30 = -9.7729e-9
+        c_31 = 3.8513e-10
+        c_32 = -2.3654e-12
 
-        sound_speed = C + (A + B * SR + depth * salinity) * salinity
+        a_00 = 1.389
+        a_01 = -1.262e-2
+        a_02 = 7.166e-5
+        a_03 = 2.008e-6
+        a_04 = -3.21e-8
+        a_10 = 9.4742e-5
+        a_11 = -1.2583e-5
+        a_12 = -6.4928e-8
+        a_13 = 1.0515e-8
+        a_14 = -2.0142e-10
+        a_20 = -3.9064e-7
+        a_21 = 9.1061e-9
+        a_22 = -1.6009e-10
+        a_23 = 7.994e-12
+        a_30 = 1.100e-10
+        a_31 = 6.651e-12
+        a_32 = -3.391e-13
+
+        b_00 = -1.922e-2
+        b_01 = -4.42e-5
+        b_10 = 7.3637e-5
+        b_11 = 1.7950e-7
+
+        d_00 = 1.727e-3
+        d_10 = -7.9836e-6
+
+        # Terms calculation
+        cw = (
+            (c_00 + c_01 * t + c_02 * t**2 + c_03 * t**3 + c_04 * t**4 + c_05 * t**5)
+            + (c_10 + c_11 * t + c_12 * t**2 + c_13 * t**3 + c_14 * t**4) * p
+            + (c_20 + c_21 * t + c_22 * t**2 + c_23 * t**3 + c_24 * t**4) * p**2
+            + (c_30 + c_31 * t + c_32 * t**2) * p**3
+        )
+        a = (
+            (a_00 + a_01 * t + a_02 * t**2 + a_03 * t**3 + a_04 * t**4)
+            + (a_10 + a_11 * t + a_12 * t**2 + a_13 * t**3 + a_14 * t**4) * p
+            + (a_20 + a_21 * t + a_22 * t**2 + a_23 * t**3) * p**2
+            + (a_30 + a_31 * t + a_32 * t**2) * p**3
+        )
+        b = b_00 + b_01 * t + (b_10 + b_11 * t) * p
+        d = d_00 + d_10 * p
+
+        return cw + a * s + b * s**1.5 + d * s**2
 
     else:
         raise ValueError(f"Unrecognized equation: {equation.lower()}")
-
-    return sound_speed
 
 
 def find_nearest(array, value):
@@ -108,14 +218,9 @@ def find_nearest(array, value):
 
 def Coef_Rbot(Para_1,Para_2,Fr):
       # Coef Ref fluide-fluide
-      C1 = Para_1[0]
-      rho1 = Para_1[1]
-      At1 = Para_1[2]
+      C1 = Para_1[0] ; rho1 = Para_1[1]; At1 = Para_1[2]
+      C2 = Para_2[0] ; rho2 = Para_2[1]; At2 = Para_2[2]
 
-      C2 = Para_2[0]
-      rho2 = Para_2[1]
-      At2 = Para_2[2]
-      
       Teta = np.linspace(0,90,181)
       w = 2*np.pi*Fr
       atp1 =	(At1*Fr)/(8.686*C1)
