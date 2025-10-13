@@ -1,5 +1,5 @@
 [project]
-name = "codes-python"
+name = "propagation_bellhop"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -15,3 +15,11 @@ dependencies = [
     "geopy",
     "netCDF4",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.0",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
