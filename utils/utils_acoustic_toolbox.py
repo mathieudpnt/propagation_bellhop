@@ -237,9 +237,6 @@ def plotray():
     # Written by Tordar
     # Based on plotray.m by Michael Porter
     """
-    from pathlib import Path
-    file= Path(r"U:/ENSTA_PROPA/PROPA/tests/Test_01E.ray")
-
     Nsxyz       = np.zeros(3) # source coordinates
     NBeamAngles = np.zeros(2) # number of beam angles
 
