@@ -1,5 +1,4 @@
 __pycache__/
 /.idea/
-/.idea
 /utils/acoustic_toolbox/
-/main.py.idea/
+/main.py
