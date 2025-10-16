@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from utils import utils_acoustic_toolbox
 
@@ -13,6 +14,7 @@ def test_file_ray (filename:Path) -> None: #ok
         _ = filename.read_text()
     except Exception as e:
         assert False
+
 
 def test_text (filename : Path): #ok
     npoints=0
