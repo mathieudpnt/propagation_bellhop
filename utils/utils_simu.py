@@ -4,15 +4,14 @@
 
 @author: xdemoulin
 """
+from __future__ import annotations
 
 import os
 from collections import namedtuple
-from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pandas as pd
 from netCDF4 import Dataset
 from numpy import dtype, float64, floating, ndarray
 from numpy.fft import fft, ifft
@@ -27,6 +26,12 @@ from utils.core_utils import (
     ref_coeff_surf,
 )
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    import pandas as pd
+
 
 def read_croco(file: Path) -> namedtuple:  # noqa: PYI024
     """Read the output from the Croco model NetCDF file and extracts relevant variables.
@@ -53,7 +58,7 @@ def read_croco(file: Path) -> namedtuple:  # noqa: PYI024
     """
     CrocoData = namedtuple(  # noqa: PYI024
         "CrocoData", ["temperature", "salinity", "depth", "lon", "lat"])
-    with (Dataset(file, "r") as ncf):
+    with Dataset(file, "r") as ncf:
         #temperature, salinity, depth, longitude grid, latitude grid
         temperature = ncf.variables["T"][:] if "T" in ncf.variables else None
         salinity = ncf.variables["S"][:] if "S" in ncf.variables else None
@@ -379,13 +384,13 @@ def impulse_response(file : Path, source : dict[str, float], station : dict[str,
         The path to the .arr file containing the inforation about rays
         (time arrival, amplitude...)
     source : dict
-        Dictionnary containing information about the signal emitted by the source
+        Dictionary containing information about the signal emitted by the source
     station : dict
-        Dictionnary containing information about the receivers (stations)
+        Dictionary containing information about the receivers (stations)
     param_water : dict
-        Dictionnary containing information about water parameters
+        Dictionary containing information about water parameters
     param_seabed : dict
-        Dictionnary containing seabed parameters
+        Dictionary containing seabed parameters
     param_env : float
         Wind speed
 
@@ -400,12 +405,12 @@ def impulse_response(file : Path, source : dict[str, float], station : dict[str,
     f_ri : ndarray [float]
         Frequency scale
     ri_f : ndarray [complex]
-        Frequencial response
+        Frequency response
 
     """
     [arr, _] = read_arrivals_asc(file)
 
-    d = 1000 * station["distance"] # distance between the sourec and receiver
+    d = 1000 * station["distance"] # distance between the source and receiver
 
     fmin = source["f_min"] # minimum frequency
     fmax = source["f_max"] #maximum frequency
