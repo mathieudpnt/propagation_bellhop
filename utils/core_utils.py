@@ -16,12 +16,23 @@ from __future__ import annotations
 import math
 
 import numpy as np
-from scipy.fft import fft, ifft
-from scipy.interpolate import interp1d
 
 
 def depth_to_pressure(z:float, lat:float) -> float:
-    """Convert depth (m) to pressure (kPa) (Leroy & Parthiot, 1998)."""
+    """Convert depth (m) to pressure (kPa) (Leroy & Parthiot, 1998).
+
+    Parameters
+    ----------
+    z : float
+        depth (m) to convert
+    lat : float
+        lattitude of the point of depth z
+
+    Returns
+    -------
+    float : pressure associated with depth (kPa)
+
+    """
     g = 9.7803 * (1 + 5.3e-3 * math.sin(math.radians(lat))**2)
 
     kz = (g - 2e-5 * z) / (9.80612 - 2e-5 * z)
@@ -33,17 +44,17 @@ def depth_to_pressure(z:float, lat:float) -> float:
 
     return hz * kz * 1000
 
-def compute_sound_speed(s:float, t:float, d:float, equation:str,
+def compute_sound_speed(salinity:float, temperature:float, depth:float, equation:str,
                         lat:float) -> float:
     """Compute the speed of sound in seawater using different empirical equations.
 
     Parameters
     ----------
-    s : float
+    salinity : float
         Salinity in ppt.
-    t : float
+    temperature : float
         Temperature in degrees Celsius.
-    d : float
+    depth : float
         Depth in meters.
     lat: float | None
         Latitude in degrees.
@@ -63,14 +74,14 @@ def compute_sound_speed(s:float, t:float, d:float, equation:str,
     """
     if equation.lower() == "mackenzie":
         return (1448.96
-         + 4.591 * t
-         - 5.304e-2 * (t ** 2)
-         + 2.374e-4 * (t ** 3)
-         + 1.340 * (s - 35)
-         + 1.630e-2 * d
-         + 1.675e-7 * (d ** 2)
-         - 1.025e-2 * t * (s - 35)
-         - 7.139e-13 * t * (d ** 3)
+                + 4.591 * temperature
+                - 5.304e-2 * (temperature ** 2)
+                + 2.374e-4 * (temperature ** 3)
+                + 1.340 * (salinity - 35)
+                + 1.630e-2 * depth
+                + 1.675e-7 * (depth ** 2)
+                - 1.025e-2 * temperature * (salinity - 35)
+                - 7.139e-13 * temperature * (depth ** 3)
                 )
 
     if equation.lower() == "del_grosso":
@@ -79,7 +90,7 @@ def compute_sound_speed(s:float, t:float, d:float, equation:str,
             msg = "`lat` must be provided."
             raise ValueError(msg)
 
-        p = depth_to_pressure(d, lat) * 0.010197162129779  # convertion
+        p = depth_to_pressure(depth, lat) * 0.010197162129779  # convertion
                                                            # from dBar to kg.cm-2
 
         # Coefficients
@@ -108,20 +119,21 @@ def compute_sound_speed(s:float, t:float, d:float, equation:str,
         c_s_t_p = -0.3406824E-3
 
         # Terms calculation
-        delta_c_t = c_t1 * t + c_t2 * t**2 + c_t3 * t**3
-        delta_c_s = c_s1 * s + c_s2 * s**2
+        delta_c_t = (c_t1 * temperature + c_t2 * temperature ** 2 + c_t3 *
+                     temperature ** 3)
+        delta_c_s = c_s1 * salinity + c_s2 * salinity ** 2
         delta_c_p = c_p1 * p + c_p2 * p**2 + c_p3 * p**3
         delta_c_s_t_p = (
-            c_t_p * t * p
-            + c_t3_p * t**3 * p
-            + c_t_p2 * t * p**2
-            + c_t2_p2 * t**2 * p**2
-            + c_t_p3 * t * p**3
-            + c_s_t * s * t
-            + c_s_t2 * s * t**2
-            + c_s_t_p * s * t * p
-            + c_s2_t_p * s**2 * t * p
-            + c_s2_p2 * s**2 * p**2
+                c_t_p * temperature * p
+                + c_t3_p * temperature ** 3 * p
+                + c_t_p2 * temperature * p ** 2
+                + c_t2_p2 * temperature ** 2 * p ** 2
+                + c_t_p3 * temperature * p ** 3
+                + c_s_t * salinity * temperature
+                + c_s_t2 * salinity * temperature ** 2
+                + c_s_t_p * salinity * temperature * p
+                + c_s2_t_p * salinity ** 2 * temperature * p
+                + c_s2_p2 * salinity ** 2 * p ** 2
         )
 
         # Calculate the total speed of sound
@@ -133,7 +145,7 @@ def compute_sound_speed(s:float, t:float, d:float, equation:str,
             msg = "`lat` must be provided."
             raise ValueError(msg)
 
-        p = depth_to_pressure(d, lat) / 100
+        p = depth_to_pressure(depth, lat) / 100
 
         # Coefficients
         c_00 = 1402.388
@@ -184,21 +196,27 @@ def compute_sound_speed(s:float, t:float, d:float, equation:str,
 
         # Terms calculation
         cw = (
-            (c_00 + c_01 * t + c_02 * t**2 + c_03 * t**3 + c_04 * t**4 + c_05 * t**5)
-            + (c_10 + c_11 * t + c_12 * t**2 + c_13 * t**3 + c_14 * t**4) * p
-            + (c_20 + c_21 * t + c_22 * t**2 + c_23 * t**3 + c_24 * t**4) * p**2
-            + (c_30 + c_31 * t + c_32 * t**2) * p**3
+                (c_00 + c_01 * temperature + c_02 * temperature ** 2 + c_03 *
+                 temperature ** 3 + c_04 * temperature ** 4 + c_05 * temperature ** 5)
+                + (c_10 + c_11 * temperature + c_12 * temperature ** 2 + c_13 *
+                   temperature ** 3 + c_14 * temperature ** 4) * p
+                + (c_20 + c_21 * temperature + c_22 * temperature ** 2 + c_23 *
+                   temperature ** 3 + c_24 * temperature ** 4) * p ** 2
+                + (c_30 + c_31 * temperature + c_32 * temperature ** 2) * p ** 3
         )
         a = (
-            (a_00 + a_01 * t + a_02 * t**2 + a_03 * t**3 + a_04 * t**4)
-            + (a_10 + a_11 * t + a_12 * t**2 + a_13 * t**3 + a_14 * t**4) * p
-            + (a_20 + a_21 * t + a_22 * t**2 + a_23 * t**3) * p**2
-            + (a_30 + a_31 * t + a_32 * t**2) * p**3
+                (a_00 + a_01 * temperature + a_02 * temperature ** 2 + a_03 *
+                 temperature ** 3 + a_04 * temperature ** 4)
+                + (a_10 + a_11 * temperature + a_12 * temperature ** 2 + a_13 *
+                   temperature ** 3 + a_14 * temperature ** 4) * p
+                + (a_20 + a_21 * temperature + a_22 * temperature ** 2 + a_23 *
+                   temperature ** 3) * p ** 2
+                + (a_30 + a_31 * temperature + a_32 * temperature ** 2) * p ** 3
         )
-        b = b_00 + b_01 * t + (b_10 + b_11 * t) * p
-        d = d_00 + d_10 * p
+        b = b_00 + b_01 * temperature + (b_10 + b_11 * temperature) * p
+        depth = d_00 + d_10 * p
 
-        return cw + a * s + b * s**1.5 + d * s**2
+        return cw + a * salinity + b * salinity**1.5 + depth * salinity**2
 
     error=f"Unrecognized equation: {equation.lower()}"
     raise ValueError(error)
@@ -226,27 +244,27 @@ def ref_coeff_bot(teta : float, para_1 : list[float, float, float], para_2 : lis
 
     Parameters
     ----------
-        teta : float
-            Angle d'incidence de l'onde par rapport à la normale
-        para_1 : list[float, float, float]
-            List of the parameters of the seabed (C1, rho1, At1)
-        para_2 : list[float, float, float]
-            List of parameters (C2, rho2, At2)
-        freq : float
-            Frequency (Hz)
+    teta : float
+        Angle d'incidence de l'onde par rapport à la normale
+    para_1 : list[float, float, float]
+        List of the parameters of the seabed (C1, rho1, At1)
+    para_2 : list[float, float, float]
+        List of parameters (C2, rho2, At2)
+    freq : float
+        Frequency (Hz)
 
     Returns
     -------
-    Reflection coefficient for a fluid-fluid interface
+    float : Reflection coefficient for a fluid-fluid interface
 
     """
-    c1 = para_1[0] # soundspeed in the seabed
-    rho1 = para_1[1] # density of the seabed
-    at1 = para_1[2] # attenuation of the sound in the seabed (dB/lambda)
+    c1 = para_1[0] # soundspeed in the water
+    rho1 = para_1[1] # density of the water
+    at1 = para_1[2] # attenuation of the sound in the water (dB/lambda)
 
-    c2 = para_2.iloc[0] # soundspeed in water
-    rho2 = para_2.iloc[1] # density of water
-    at2 = para_2.iloc[2] # attenuation of the sound in water (dB/lambda)
+    c2 = para_2.iloc[0] # soundspeed in seabed
+    rho2 = para_2.iloc[1] # density of seabed
+    at2 = para_2.iloc[2] # attenuation of the sound in seabed (dB/lambda)
 
     w = 2 * np.pi * freq # omega
     atp1 = (at1 * freq) / (8.686 * c1) # conversion de l'attenuation en Np
@@ -273,12 +291,12 @@ def ref_coeff_surf(teta : float, wind_speed : float, freq : float) -> float:
 
     Parameters
     ----------
-        teta : float
-            angle in degree
-        wind_speed : float
-            wind speed in knots
-        freq : float
-            frequency in kHz
+    teta : float
+        Angle in degree
+    wind_speed : float
+        wWind speed in knots
+    freq : float
+        Frequency in kHz
 
     Returns
     -------
@@ -299,21 +317,20 @@ def atten_fg(f :float, s : float, t : float, z : float, ph : float) -> float:
 
     Parameters
     ----------
-        f : float
-            frequency in kHz
-        s : float
-            salinity in ppm (35 ppm typically)
-        t : float
-            temperature in °C
-        z : float
-            immersion in m
-        ph : float
-            pH (8 typically). Very sensitive at low frequency
+    f : float
+        Frequency in kHz
+    s : float
+        Salinity in ppm (35 ppm typically)
+    t : float
+        Temperature in °C
+    z : float
+        Immersion in m
+    ph : float
+        pH (8 typically). Very sensitive at low frequency
 
     Returns
     -------
-        attenuation coefficient : float
-            in dB/km
+    Attenuation coefficient in dB/km : float
 
     """
     c = 1412+3.21*t+1.19*s+0.0167*z
@@ -344,12 +361,12 @@ def find_pow2(x : float) -> int:
     Parameters
     ----------
     x : float
-        value to find nearest power of 2
+        Value to find nearest power of 2
 
     Returns
     -------
     n : int
-        nearest power of 2
+        Nearest power of 2
 
     """
     n=0
@@ -358,49 +375,3 @@ def find_pow2(x : float) -> int:
        p = p*2
        n = n+1
     return n
-
-
-def synthetic_signal(fmin : float, fmax : float, deltaf : float, fe : float) -> float:
-    """synthetic_signal.
-
-    Parameters
-    ----------
-    fmin : float
-    fmax : float
-    deltaf : float
-    fe : float
-
-    Returns
-    -------
-    temp : float
-    signal : float
-    freq : float
-    z : float
-
-    """
-    freq	= np.arange(deltaf,fe,deltaf) # generates an array of values
-                                          # from deltaf to fe with a pas of deltaf
-
-    if deltaf==0.1:  # noqa: PLR2004
-        freq = np.around(freq,1)
-    elif deltaf==0.01:  # noqa: PLR2004
-        freq = np.around(freq,2)
-    temp	= np.arange(1/fe,1/deltaf,1/fe)
-    n1 	= list(freq).index(fmin)
-    n2 	= list(freq).index(fmax)
-    n3 =  list(freq).index(fe/2)
-
-    y = np.zeros(len(freq))
-    y0 = interp1d([n1, 2*n1, 4*n1, n2],[1, 2, 4, 2],kind="linear")(np.arange(n1,n2,1))
-    y[n1:n2] = y0
-    y[n3+2:-1] = np.flip(np.conj(y[2:n3]))
-
-    bb = np.random.normal(0, 0.1, len(freq)) # val moy et std
-    sbb = fft(bb)
-    b = np.sum(sbb*np.conj(sbb))
-
-    z = 1./np.sqrt(b)*(np.sqrt(y)*sbb)
-    signal = np.sqrt(len(freq)/2)*np.real(ifft(z))
-
-    return temp,signal,freq,z
-

@@ -11,7 +11,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from numpy import dtype, float64, ndarray
+from numpy import ndarray
+
+from utils.core_utils import depth_to_pressure, find_nearest
+from utils.subfonctions import readline_1, zeros
 
 
 def write_env_file(root : Path,  # noqa: PLR0913
@@ -25,8 +28,8 @@ def write_env_file(root : Path,  # noqa: PLR0913
                    nb_ray : int,
                    zmax : float,
                    param_seabed : pd.Series(),
-                   opening_angle : float,
-                   calc : str ) -> float:
+                   grazing_angle : float,
+                   calc : str, croco_data, lon, lat, source, param_water, yday) -> float:
     """Generate an environment file (.env) for Bellhop acoustic propagation modeling.
 
     Parameters
@@ -53,7 +56,7 @@ def write_env_file(root : Path,  # noqa: PLR0913
         Maximum depth for the simulation (meters).
     param_seabed : pd.Series
         Seabed parameters: [sound speed, density ratio, attenuation].
-    opening_angle : float
+    grazing_angle : float
         Beam opening angle (degrees).
     calc : str
         Calculation type ('I' for incoherent, 'E' for eigenray, 'A' for arrivals).
@@ -72,14 +75,20 @@ def write_env_file(root : Path,  # noqa: PLR0913
     """
     # Create/Open the environment file
     with Path.open(root / Path(f"{env_name}.env"), "w") as fid:
-
+        file=Path.open(root / Path(f"{env_name}.env"))
         # Write file header
         fid.write(f"'{env_name}'\n")  # Environment file name
         fid.write(f"{f_cen}\n")  # Central frequency
         fid.write("1\n")  # Number of layers (single layer for water column)
         fid.write("'CVWF'\n")  # See file: ./acoustic_toolbox/doc/EnvironmentalFile.html
-        fid.write("19.3 35. 8. 50.\n")  # Temperature, Salinity, pH, Depth of bar
-        # TODO(): rentrer dynamiquement les valeurs CROCO+commentaires noqa:FIX002,TD003
+        lat_ix  = find_nearest(croco_data.lat[:, 0], lat)  # Index of the closest latitude in the CROCO grid
+        lon_ix = find_nearest(croco_data.lon[0, :], lon)  # Index of the closest longitude in the CROCO grid
+        depth_ix=find_nearest(croco_data.depth[:,0,0], -source.depth)
+        salinity = round(croco_data.salinity[yday, depth_ix, lat_ix, lon_ix],1)  # Salinity profile
+        temperature = round(croco_data.temperature[yday, depth_ix, lat_ix, lon_ix],1)  # Temperature profile
+        pH=param_water["pH"]
+        depth_bar = depth_to_pressure(source.depth, lat)
+        fid.write( f"{temperature} {salinity} {pH} {depth_bar}\n")  # Temperature, Salinity, pH, pressure at a certain depth
         fid.write(f"0 0.0 {zmax}\n")  # Depth range (0 to zmax)
 
         # Write sound speed profile
@@ -117,16 +126,16 @@ def write_env_file(root : Path,  # noqa: PLR0913
             fid.write(f"{rmax} /\n{calc}\n50001\n")
 
         # Beam angles
-        fid.write(f"{-opening_angle} {opening_angle} /\n")
+        fid.write(f"{-grazing_angle} {grazing_angle} /\n")
 
         # Grid resolution settings
         fid.write(f"0. {10 * round(1.05 * zmax / 10)} "
                   f"{round(1.05 * 100 * rmax) / 100}\n")
 
-    return rmax
+    return rmax, file
 
 
-def read_shd(filename=Path) -> tuple[ndarray[float], ndarray[float]]:  # noqa: C901
+def read_shd(filename= Path) -> ndarray[float]:
     """Read the .shd file resulting from using Bellhop.
 
     and extracts the pressure field around the source and the geometry of the zone
@@ -232,7 +241,7 @@ def read_shd(filename=Path) -> tuple[ndarray[float], ndarray[float]]:  # noqa: C
     return pressure,geometry
 
 
-def plotray(filename : Path) -> tuple[int, ndarray[tuple[int], dtype[float64]]]:
+def plotray(filename : Path) -> int :
     """Read bellhop file and plot the rays.
 
     Read the .ray file resulting from using Bellhop, extract the
@@ -259,26 +268,22 @@ def plotray(filename : Path) -> tuple[int, ndarray[tuple[int], dtype[float64]]]:
     # Based on plotray.m by Michael Porter
 
     """
-    n_beam_angles = np.zeros(2) # number of beam angles
     # header reading
     fid = Path.open( filename )
     next(fid), next(fid), next(fid)
 
-    data = str(fid.readline()).split()
-    n_beam_angles[0] = int( data[0] ) # number of elevation beams
-    n_beam_angles[1] = int( data[1] ) # number of azimutal beams
+    n_beam_angles = int((fid.readline()).split()[0]) # number of elevation beams
 
     next(fid), next(fid), next(fid)
-    nalpha = int( n_beam_angles[0] ) # number of elevation beams
+    nalpha = n_beam_angles # number of elevation beams
 
     # for each beam the coordinates of nsteps points are extracted from the initial file
     for _ibeam in range(nalpha):
         len_ = len(str( fid.readline() )) # departure angle of the  beam
         if len_ > 0: # loop until the end of the document
-           data = str(fid.readline()).split()
-           nsteps = int ( data[0] ) # number of points on the beam
-           r = np.zeros(nsteps) # initiation of range array
-           z = np.zeros(nsteps) # initiation of depth array
+           nsteps = int(fid.readline().split()[0]) # number of points on the beam
+           r = zeros(nsteps, 0) # initiation of range array
+           z = zeros(nsteps, 0) # initiation of depth array
 
            # extraction of the coordinates for each point
            for nj in range(nsteps):
@@ -299,9 +304,7 @@ def plotray(filename : Path) -> tuple[int, ndarray[tuple[int], dtype[float64]]]:
     fid.close()
     return nalpha
 
-def read_arrivals_asc(filename= Path) -> tuple[
-    dict[str, int | ndarray[tuple[Any, ...], dtype[Any]] | ndarray[tuple[int],
-    dtype[float64]] | Any], dict[str, float]]:
+def read_arrivals_asc(filename= Path) -> ndarray[tuple[Any, ...]]:
     """Read the .asc file resulting from using Bellhop.
 
     and extracts the ray's arrival times
@@ -331,45 +334,36 @@ def read_arrivals_asc(filename= Path) -> tuple[
     # Based on read_arrivals_asc.m by Michael Porter
 
     """
-    narrmx = 100
     fid = Path.open(filename)
     next(fid)
     freq  = float( fid.readline() ) # frequency
 
-    # source depth
-    data = str(fid.readline()).split()
-    source_depth = float( data[1] )
-
-    # receiver depth
-    data = str(fid.readline()).split()
-    receiver_depth = float( data[1] )
-
-    # receiver range
-    data = str(fid.readline()).split()
-    receiver_range = float( data[1] )
+    source_depth = readline_1(fid,0) # source depth
+    receiver_depth = readline_1(fid,0) # receiver depth
+    receiver_range = readline_1(fid,0) # receiver range
 
 
     # Initiation of the components of arr
     narr      = int( fid.readline() ) # total number of studied rays
-    a         = np.zeros( narrmx ) + 1j*np.zeros( narrmx ) # wave equation
-    delay     = np.zeros( narrmx ) + 1j*np.zeros( narrmx ) #complex delay
-    src_angle  = np.zeros( narrmx ) # departure angle
-    rcvr_angle = np.zeros( narrmx ) # arrival angle
-    num_top_bnc = np.zeros( narrmx ) # number of top reflexions
-    num_bot_bnc = np.zeros( narrmx ) # number of bottom reflexions
+    a         = zeros(narr, 1) # wave equation
+    delay     = zeros(narr, 1) #complex delay
+    src_angle  = zeros(narr, 0) # departure angle
+    rcvr_angle = zeros(narr, 0) # arrival angle
+    num_top_bnc = zeros(narr, 0) # number of top reflexions
+    num_bot_bnc = zeros(narr, 0) # number of bottom reflexions
     next(fid)
 
     # Reading of the .arr file generated by bellhop
-    for k in range(narrmx):
-        data = str(fid.readline()).split()
-        amp   = float( data[0] ) # amplitude
-        phase = float( data[1] ) # phase
+    for k in range(narr):
+        data = fid.readline().split()
+        amp   = float(data[0]) # amplitude
+        phase = float(data[1]) # phase
         a[ k ] = amp*np.exp( 1j*phase*np.pi/180.0 ) # complex wave equation
-        rtau = float( data[2] ) # real part of delay
-        itau = float( data[3] ) # imaginary part of delay
+        rtau = float(data[2]) # real part of delay
+        itau = float(data[3]) # imaginary part of delay
         delay[ k ] = rtau + 1j*itau # complex delay
-        src_angle[ k ] = float( data[4] ) # departure angle
-        rcvr_angle[ k ] = float( data[5] ) # arrival angle
+        src_angle[ k ] = float(data[4]) # departure angle
+        rcvr_angle[ k ] = float(data[5]) # arrival angle
         num_top_bnc[ k ] = int( data[6] ) # number of top reflexions
         num_bot_bnc[ k ] = int( data[7] ) # number of bottom reflexions
 

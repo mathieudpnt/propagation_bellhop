@@ -28,7 +28,6 @@ from utils.core_utils import (
 )
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
-
 def read_croco(file: Path) -> namedtuple:  # noqa: PYI024
     """Read the output from the Croco model NetCDF file and extracts relevant variables.
 
@@ -74,12 +73,11 @@ def read_croco(file: Path) -> namedtuple:  # noqa: PYI024
     lon = np.squeeze(lon)
     lat = np.squeeze(lat)
     depth = np.squeeze(depth)
+    #Data=CrocoData(temperature, salinity, depth, lon, lat)
+    return CrocoData(temperature=temperature, salinity=salinity, depth=depth, lon=lon, lat=lat)
 
-    return CrocoData((temperature, salinity, depth, lon, lat))
-
-def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> tuple[
-    ndarray[tuple[Any, ...], Any], ndarray[tuple[Any, ...], Any],
-    ndarray[tuple[Any, ...], Any]]:
+def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarray [tuple
+    [Any, ...], Any]:
     """Read a bathymetric file and extracts information.
 
     Extracts the data that falls within the specified latitude and longitude limits.
@@ -103,7 +101,7 @@ def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> tuple[
     lon_extract : ndarray
         A 1D array of the longitudes that correspond to the extracted region
         based on `lim_lon`.
-    elev : ndarray
+    data_extract : ndarray
         A 2D array of the bathymetric elevation data for the extracted region.
 
     """
@@ -194,7 +192,7 @@ def extract_bty(source: pd.Series, station: pd.Series, lat: np.ndarray,
         nearest_lon = find_nearest(lon, j)
         zb.append(abs(elev[nearest_lat, nearest_lon]))
 
-    # generates a distance vector from 0 to nb_p between source and receptor
+    # generates a distance vector from the source and receptor with nb_p points
     dist = np.linspace(start=0, stop=station["distance"], num=nb_p)
 
     z_max = max(zb) - (max(zb) % 5)  # maximum depth with a 5-meter resolution
@@ -260,13 +258,14 @@ def sound_speed_profile(method: str, yday: int, z : np.array, ref_coord : tuple
     temperature = croco_data.temperature[yday, :, idx_lat, idx_lon] #Temperature profile
     latitude = croco_data.lat[idx_lat, idx_lon]
 
-    return [compute_sound_speed(s=sal, t=temp, d=z_i, equation=method, lat=latitude)
+    return [compute_sound_speed(salinity=sal, temperature=temp, depth=z_i, equation=method, lat=latitude)
             for sal, temp, z_i in zip(salinity, temperature, z, strict=False)]
 
 def run_bellhop(executable: Path, bellhop_dir: Path, filename: str,  # noqa: PLR0913
                 calc: str | list[str], z_max: float, source: pd.Series,
                 station: pd.Series, dist: np.array, zb: Iterable, sound_speed: np.array,
-                z_transect: np.array, param_seabed: pd.Series) -> None:
+                z_transect: np.array, param_seabed: pd.Series, croco_data, lon, lat,
+                param_water, yday) -> None:
     """Run the Bellhop acoustic model to compute underwater sound propagation.
 
     Based on the given parameters, this code creates the necessary Bellhop input files
@@ -326,13 +325,13 @@ def run_bellhop(executable: Path, bellhop_dir: Path, filename: str,  # noqa: PLR
 
     """
     # Ensure the Bellhop directory exists
-    bellhop_dir.mkdir(parents=True, exist_ok=True)
+    #bellhop_dir.mkdir(parents=True, exist_ok=True)
 
     # Compute central frequency of the sound source
     f_cen = int((source["f_min"] + source["f_max"]) / 2)
-
+    a=station.distance
     # Define the number of bathymetry points (ensuring at least 15 points)
-    nb_p = max(15, int(10 * station["distance"]))  # Sampling at 100m intervals
+    nb_p = max(15, int(10 * a))  # Sampling at 100m intervals
 
     # Compute the number of rays based on distance (one ray per 25 meters)
     nb_ray = int((dist[-1] * 1000) // 25)
@@ -346,9 +345,10 @@ def run_bellhop(executable: Path, bellhop_dir: Path, filename: str,  # noqa: PLR
 
         # Generate Bellhop environment file
         write_env_file(
-            bellhop_dir, f"{filename}{c}", f_cen, source["depth"], station["depth"],
-            sound_speed, z_transect, station["distance"], nb_ray, z_max,
-            param_seabed, source["opening_angle"], f"{c}",
+            bellhop_dir, f"{filename}{c}", f_cen, source["depth"], station.depth,
+            sound_speed, z_transect, station.distance, nb_ray, z_max,
+            param_seabed, source["grazing_angle"], f"{c}", croco_data,
+            lon, lat, source, param_water, yday,
         )
 
         # Write bathymetry (.bty) file
@@ -363,7 +363,6 @@ def run_bellhop(executable: Path, bellhop_dir: Path, filename: str,  # noqa: PLR
 
 
 
-# TODO(Question MD): pas d'explications/commentaires sur cette fonction
 def impulse_response(file : Path, source : dict[str, float], station : dict[str, float],  # noqa: PLR0913, PLR0915
                      param_water : dict[str, float], param_seabed : dict[str, float],
                      param_env : float) -> tuple[np.ndarray[np.ndarray[np.float64],
@@ -410,10 +409,10 @@ def impulse_response(file : Path, source : dict[str, float], station : dict[str,
 
     fmin = source["f_min"] # minimum frequency
     fmax = source["f_max"] #maximum frequency
-    samp_freq = source["samp_freq"] # sampling frequency
+    samp_freq = source["fe"] # sampling frequency
     t0 = source["t0"] # duration of the transmitted signal
     ponder = source["ponder"] #frequency weighting type
-    opening_angle = source["opening_angle"]
+    grazing_angle = source["grazing_angle"]
 
     # environmental data
     salinity = param_water["salinity"]
@@ -422,8 +421,8 @@ def impulse_response(file : Path, source : dict[str, float], station : dict[str,
 
     w = param_env
 
-    ta = d / np.cos(np.pi/180*opening_angle) / 1500 # maximal duration of the wave
-                                                    # path with a certain opening angle
+    ta = d / np.cos(np.pi/180*grazing_angle) / 1500 # maximal duration of the wave
+                                                    # path with a certain grazing angle
     nbp = 2 ** find_pow2((ta + 2 * t0) * samp_freq) # number of points
     freq = np.arange(0, samp_freq, samp_freq/nbp) # frequency axis
     temp = np.arange(0, nbp/samp_freq, 1/samp_freq) # time axis
@@ -445,11 +444,11 @@ def impulse_response(file : Path, source : dict[str, float], station : dict[str,
         se = fft(se) / (nbp/2)
 
     t = np.squeeze(arr["delay"].real)  # arrival time
-    tet = np.squeeze(1/2*(abs(arr["SrcAngle"])+abs(arr["RcvrAngle"]))) #average
+    tet = np.squeeze(1/2*(abs(arr["src_angle"])+abs(arr["rcvr_angle"]))) #average
                                                 # ray angle at the interferences
     dis = 1500 * t  # distance traveled (m)
-    ns = np.squeeze(arr["NumTopBnc"]) # number of top reflections
-    nb = np.squeeze(arr["NumBotBnc"]) # number of bottom reflexions
+    ns = np.squeeze(arr["num_top_bnc"]) # number of top reflections
+    nb = np.squeeze(arr["num_bot_bnc"]) # number of bottom reflexions
 
     # loop on frequency
     n1 = np.where(freq>=fmin)[0][0]
