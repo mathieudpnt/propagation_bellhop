@@ -19,7 +19,20 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ruff>=0.14.0",
+    "pytest"
 ]
 
 [tool.ruff.lint]
 select = ["ALL"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = [
+    # at least this three should be fine in tests:
+    "S101", # asserts allowed in tests...
+    "ARG", # Unused function args -> fixtures nevertheless are functionally relevant...
+    "FBT", # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
+    "D", # Docstring-related stuff
+    "SLF001", # Access to private variables
+    "BLE001", # Blind exceptions
+    "PLR0913", # Too many arguments in methods
+]
