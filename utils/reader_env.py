@@ -3,9 +3,7 @@
 
 from pathlib import Path
 
-from sub_read_env import read_angle
-
-from utils.sub_read_env import check_angle
+from utils.sub_read_env import check_len, read_angle, read_env_param, read_md, read_depth
 
 
 def read_env(file: Path) -> list :
@@ -38,10 +36,18 @@ def read_env(file: Path) -> list :
 
     title = content[0]
     frequency=int(content[1])
-    number_media=int(content[2])
+
+    number_media=content[2]
+    number_media=read_md(number_media)
+
     env_opt=content[3]
-    env_carac=content[4]
+
+    env_param=content[4]
+    env_param=read_env_param(env_param,4)
+
     depth=content[5]
+    zmin, zmax= read_depth(depth)
+
     depth_prof,sound_speed_prof = content [6].split(" ")[:2]
     depth_prof, sound_speed_prof = [float(depth_prof)], [float(sound_speed_prof)]
     i=7
@@ -62,7 +68,7 @@ def read_env(file: Path) -> list :
     run_type= content[i+9]
     nb_beam=content[i+10]
     ang= content[i+11]
-    read_angle(ang)
+    x,y = read_angle(ang)
 
     info= content[i+12]
 

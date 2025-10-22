@@ -2,10 +2,12 @@
 from contextlib import nullcontext
 from pathlib import Path
 
+import numpy as np
 import pytest
 
+from sub_read_env import read_depth
 from utils.reader_env import read_env
-from utils.sub_read_env import read_angle
+from utils.sub_read_env import read_angle, read_md
 
 
 def test_invalid_env_path() -> None:
@@ -29,7 +31,54 @@ def test_empty_env(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
-        pytest.param("-120 120", nullcontext((-120.0, 120.0)), id="zmin<zmax"),
+        pytest.param("1", nullcontext(1), id="Valide media line : 1"),
+        pytest.param(
+            "2",
+            pytest.raises(ValueError, match="Invalid media line: 2"),
+            id="Too many medias",
+        ),
+        pytest.param(
+            "-1",
+            pytest.raises(ValueError, match="Invalid media line: -1"),
+            id="Not enought medias",
+        ),
+    ],
+)
+def test_nb_md(line: str, expected: int) -> None:
+    with expected as e:
+        assert read_md(line) == e
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        pytest.param("0 0.0 250.0", nullcontext((0.0, 250.0)), id="Valide depth line: 0.0 250.0"),
+        pytest.param(
+            "0 -15.0 250.0",
+            pytest.raises(ValueError, match="Invalid depth line: 0 -15.0 250.0"),
+            id="zmin should be positive",
+        ),
+        pytest.param(
+            "0 250.0 0.0",
+            pytest.raises(ValueError, match="Invalid depth line: 0 250.0 0.0"),
+            id="zmin should be smaller than zmax",
+        ),
+        pytest.param(
+            "0 0.0 0.0",
+            pytest.raises(ValueError, match="Invalid depth line: 0 0.0 0.0"),
+            id="zmin should be different than zmax",
+        ),
+    ],
+)
+def test_depth(line: str, expected: tuple[float, float]) -> None:
+    with expected as e:
+        assert read_depth(line) == e
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        pytest.param("-120 120", nullcontext((-120.0, 120.0)), id="Valid angle "
+                                                                  "line: -120 120"),
         pytest.param(
             "-120 1220",
             pytest.raises(ValueError, match="Invalid angle line: -120 1220"),
@@ -44,6 +93,11 @@ def test_empty_env(tmp_path: Path) -> None:
             "-190 190",
             pytest.raises(ValueError, match="Invalid angle line: -190 190"),
             id="zmin<180 and zmax>180",
+        ),
+        pytest.param(
+            "120 -120",
+            pytest.raises(ValueError, match="Invalid angle line: 120 -120"),
+            id="pascoolraoul",
         ),
     ],
 )
