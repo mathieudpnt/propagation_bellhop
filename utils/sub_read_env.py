@@ -6,6 +6,9 @@ def check_len(line, nb):
 def check_pos(value):
     return value>=0
 
+def check_diff(a,b):
+    return a!=b
+
 def read_env_param(line, nb):
     if not (check_len(line,nb)):
         raise ValueError(f"Invalid env_carac line: {line}")
@@ -13,7 +16,7 @@ def read_env_param(line, nb):
 
 def read_md(number_media):
     number_media = int(number_media)
-    if number_media != 1:
+    if check_diff(number_media,1):
         raise ValueError(f"Invalid media line: {number_media}")
     return number_media
 
@@ -25,6 +28,17 @@ def read_depth(line):
     if zmin>=zmax:
         raise ValueError(f"Invalid depth line: {line}")
     return zmin, zmax
+
+def read_z(z0, zmin):
+    z0=float(z0)
+    if check_diff(z0, zmin):
+        raise ValueError("z0 must be equal to zmin")
+    return z0
+
+def read_prof(d_prof):
+    if not all(x < y for x, y in zip(d_prof, d_prof[1:])):
+        raise ValueError("depth should be increasing")
+    return d_prof
 
 def check_angle(angle: float) -> bool:
     return -180 <= angle <= 180

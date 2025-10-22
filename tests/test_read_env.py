@@ -7,7 +7,7 @@ import pytest
 
 from sub_read_env import read_depth
 from utils.reader_env import read_env
-from utils.sub_read_env import read_angle, read_md
+from utils.sub_read_env import read_angle, read_md, read_z
 
 
 def test_invalid_env_path() -> None:
@@ -28,6 +28,8 @@ def test_empty_env(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="is empty"):
         read_env(empty_file)
 
+
+
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
@@ -47,6 +49,8 @@ def test_empty_env(tmp_path: Path) -> None:
 def test_nb_md(line: str, expected: int) -> None:
     with expected as e:
         assert read_md(line) == e
+
+
 
 @pytest.mark.parametrize(
     ("line", "expected"),
@@ -72,6 +76,32 @@ def test_nb_md(line: str, expected: int) -> None:
 def test_depth(line: str, expected: tuple[float, float]) -> None:
     with expected as e:
         assert read_depth(line) == e
+
+
+
+@pytest.mark.parametrize(
+    ("z0", "zmin", "expected"),
+    [
+        pytest.param(
+            "0.0", 0.0, nullcontext(0.0),
+            id="Valide depth line: 0.0 0.0"
+        ),
+        pytest.param(
+            "0.0", 10.0,
+            pytest.raises(ValueError, match="z0 must be equal to zmin"),
+            id="z0 must be equal to zmin"
+        ),
+        pytest.param(
+            "50.0", 0.0,
+            pytest.raises(ValueError, match="z0 must be equal to zmin"),
+            id="z0 must be equal to zmin"
+        ),
+    ],
+)
+def test_z(z0 : str, zmin : float, expected: float) -> None:
+    with expected as e:
+        assert read_z(z0, zmin) == e
+
 
 
 @pytest.mark.parametrize(

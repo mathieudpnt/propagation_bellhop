@@ -3,7 +3,15 @@
 
 from pathlib import Path
 
-from utils.sub_read_env import check_len, read_angle, read_env_param, read_md, read_depth
+from utils.sub_read_env import (
+    check_len,
+    read_angle,
+    read_depth,
+    read_env_param,
+    read_md,
+    read_prof,
+    read_z,
+)
 
 
 def read_env(file: Path) -> list :
@@ -49,13 +57,19 @@ def read_env(file: Path) -> list :
     zmin, zmax= read_depth(depth)
 
     depth_prof,sound_speed_prof = content [6].split(" ")[:2]
+    z0=read_z(depth_prof, zmin)
+
     depth_prof, sound_speed_prof = [float(depth_prof)], [float(sound_speed_prof)]
     i=7
-    while float(content[i].split(" ")[0])<float(depth.split(" ")[2]):
+    while float(content[i].split(" ")[0])<zmax:
         depth_prof.append(float(content[i].split(" ")[0]))
         sound_speed_prof.append(float(content[i].split(" ")[1]))
-        i+=1
-    zmax=float(content[i].split(" ")[0])
+        i += 1
+    z_fin = float(content[i].split(" ")[0])
+    depth_prof.append(z_fin)
+    d_prof=read_prof(depth_prof)
+
+
     bot_cond=content[i+1]
     bot_prop=content[i+2]
 
