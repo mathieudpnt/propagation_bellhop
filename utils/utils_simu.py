@@ -25,6 +25,7 @@ from utils.core_utils import (
     ref_coeff_bot,
     ref_coeff_surf,
 )
+from utils.reader_env import read_env
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:
@@ -349,12 +350,12 @@ def run_bellhop(executable: Path, bellhop_dir: Path, filename: str,  # noqa: PLR
     for c in calc:
 
         # Generate Bellhop environment file
-        write_env_file(
-            bellhop_dir, f"{filename}{c}", f_cen, source["depth"], station.depth,
-            sound_speed, z_transect, station.distance, nb_ray, z_max,
-            param_seabed, source["grazing_angle"], f"{c}", croco_data,
-            lon, lat, source, param_water, yday,
-        )
+        envfil = write_env_file(bellhop_dir,f"{filename}{c}", f_cen , source["depth"],
+                   station.depth, sound_speed, z_transect, station.distance,
+                   nb_ray, z_max, param_seabed, source["grazing_angle"],
+                   f"{c}", croco_data, lon, lat, source, param_water, yday)
+
+        read_env(envfil)
 
         # Write bathymetry (.bty) file
         with Path.open(bellhop_dir / f"{filename}{c}.bty", "w") as fid:
@@ -363,6 +364,7 @@ def run_bellhop(executable: Path, bellhop_dir: Path, filename: str,  # noqa: PLR
             fid.writelines(f"{np.squeeze(dist[i])} {np.squeeze(zb[i])} /\n"
                            for i in range(len(zb)))
 
+        # checker que le fichier env soit ok
         # Run Bellhop model using system command
         os.system(f"{executable} {bellhop_dir / (filename + c)}")  # noqa: S605
 

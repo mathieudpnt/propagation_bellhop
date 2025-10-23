@@ -4,12 +4,14 @@
 from pathlib import Path
 
 from utils.sub_read_env import (
-    check_len,
+    check_eq,
     read_angle,
+    read_bot_prop,
     read_depth,
     read_env_param,
     read_md,
     read_prof,
+    read_run_type,
     read_z,
 )
 
@@ -65,13 +67,16 @@ def read_env(file: Path) -> list :
         depth_prof.append(float(content[i].split(" ")[0]))
         sound_speed_prof.append(float(content[i].split(" ")[1]))
         i += 1
-    z_fin = float(content[i].split(" ")[0])
+    z_fin, c_fin = (content[i].split(" ")[:2])
+    z_fin, c_fin = float(z_fin), float(c_fin)
+    check_eq(z_fin, zmax)
     depth_prof.append(z_fin)
+    sound_speed_prof.append(c_fin)
     d_prof=read_prof(depth_prof)
-
 
     bot_cond=content[i+1]
     bot_prop=content[i+2]
+    b_prop=read_bot_prop(bot_prop,7, zmax)
 
     nb_src=content[i+3]
     src_z=content[i+4]
@@ -79,13 +84,38 @@ def read_env(file: Path) -> list :
     rdv_z=content[i+6]
     nb_rcv_r = content[i+7]
     rdv_r = content[i+8]
+
     run_type= content[i+9]
-    nb_beam=content[i+10]
-    ang= content[i+11]
-    x,y = read_angle(ang)
+    r_type=read_run_type(run_type)
 
-    info= content[i+12]
+    nb_beam = content[i + 10]
 
-    return content
+    ang = content[i + 11]
+    x, y = read_angle(ang)
 
+    info = content[i + 12]
 
+    data = {"title": title,
+            "frequency": frequency,
+            "number_media" : number_media,
+            "env_opt" : env_opt,
+            "env_param" : env_param,
+            "zmin, zmax" : (zmin, zmax),
+            "z0" : z0,
+            "d_prof" : d_prof,
+            "sound_speed_prof" : sound_speed_prof,
+            "bot_cond" : bot_cond,
+            "b_prop" : b_prop,
+            "nb_src" : nb_src,
+            "src_z" : src_z,
+            "nb_rcv_z" : nb_rcv_z,
+            "rdv_z" : rdv_z,
+            "nb_rcv_r" : nb_rcv_r,
+            "rdv_r" : rdv_r,
+            "r_type" : r_type,
+            "nb_beam" : nb_beam,
+            "angles" : (x,y),
+            "info" : info,
+            }
+
+    return content,data
