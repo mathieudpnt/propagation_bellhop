@@ -4,20 +4,14 @@ from pathlib import Path
 from pandas.core.arrays.numeric import NumericArray
 from pandas.core.internals.construction import nested_data_to_arrays
 
-from utils.sub_read_env import (
-    check_eq,
-    read_angle,
-    read_bot_prop,
-    read_depth,
-    read_env_param,
-    read_md,
-    read_prof,
-    read_run_type,
-    read_z,
+from utils.sub_read_arr import (
+    read_dim,
+    read_src_angle,
+    check_len,
 )
 
 
-def read_env(file: Path) -> list :
+def read_arr(file: Path) -> list :
     """Check the arrival file created by bellhop.
 
     Parameters
@@ -39,15 +33,14 @@ def read_env(file: Path) -> list :
         msg = f"{file} does not exist"
         raise FileNotFoundError(msg)
 
-    content = file.read_text().splitlines()
+    content = [elem.strip() for elem in file.read_text().splitlines()]
 
     if not content:
         msg = f"{file} is empty"
         raise ValueError(msg)
 
-
-    dimension = content[0]
-    # 2D test
+    dimension = content[0].strip()
+    dim=read_dim(dimension,2)
     frequency=float(content[1])
 
     nb_src, src_z =content[2].split()
@@ -56,7 +49,6 @@ def read_env(file: Path) -> list :
 
     narr=int(content[5])
     narr=int(content[6])
-    # nb lines = narr
 
     i=7
     amp=[]
@@ -80,17 +72,26 @@ def read_env(file: Path) -> list :
         nb_bot_bnc.append(int(line[7]))
         i += 1
 
-    # src_ang must be decreasing
-    # check len each variable == narr
-    #
-    arr_data = {"amp" : amp,
-                "phase": phase,
-                "delay_re" : delay_re,
-                "delay_im" : delay_im,
-                "src_ang" : src_ang,
-                "rcv_ang" : rcv_ang,
-                "nb_top_bnc" : nb_top_bnc,
-                "nb_bot_bnc" : nb_bot_bnc,
-                }
+    for x in (amp,phase,delay_re,delay_im,src_ang,rcv_ang,nb_top_bnc,nb_bot_bnc):
+        check_len(x,narr)
+
+    arr_data = {
+        "dim": dim,
+        "frequency": frequency,
+        "nb_src": nb_src,
+        "nb_rcv_z": nb_rcv_z,
+        "rcv_z": rcv_z,
+        "nb_rcv_r": nb_rcv_r,
+        "rcv_r": rcv_r,
+        "narr": narr,
+        "amp": amp,
+        "phase": phase,
+        "delay_re": delay_re,
+        "delay_im": delay_im,
+        "src_ang": src_ang,
+        "rcv_ang": rcv_ang,
+        "nb_top_bnc": nb_top_bnc,
+        "nb_bot_bnc": nb_bot_bnc,
+    }
 
     return content,arr_data

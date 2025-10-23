@@ -16,7 +16,7 @@ from utils.sub_read_env import (
 )
 
 
-def read_env(file: Path) -> list :
+def read_env(file: Path) -> (list, dict):
     """Check the environmental file created by bellhop.
 
     Parameters
