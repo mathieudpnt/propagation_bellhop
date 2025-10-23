@@ -355,7 +355,7 @@ def run_bellhop(executable: Path, bellhop_dir: Path, filename: str,  # noqa: PLR
                    nb_ray, z_max, param_seabed, source["grazing_angle"],
                    f"{c}", croco_data, lon, lat, source, param_water, yday)
 
-        read_env(envfil)
+        env_data=read_env(envfil)
 
         # Write bathymetry (.bty) file
         with Path.open(bellhop_dir / f"{filename}{c}.bty", "w") as fid:

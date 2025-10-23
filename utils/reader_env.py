@@ -95,7 +95,7 @@ def read_env(file: Path) -> list :
 
     info = content[i + 12]
 
-    data = {"title": title,
+    env_data = {"title": title,
             "frequency": frequency,
             "number_media" : number_media,
             "env_opt" : env_opt,
@@ -118,4 +118,4 @@ def read_env(file: Path) -> list :
             "info" : info,
             }
 
-    return content,data
+    return content,env_data
