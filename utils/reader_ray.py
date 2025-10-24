@@ -26,7 +26,6 @@ def read_env(file: Path) -> (list, dict):
     if not file.exists():
         msg = f"{file} does not exist"
         raise FileNotFoundError(msg)
-    file=Path(r'L:/acoustock/Bioacoustique/PROPA/test/Test_01E.ray')
     content = [elem.strip() for elem in file.read_text().splitlines()]
 
     if not content:
