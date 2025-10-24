@@ -29,7 +29,8 @@ def write_env_file(root : Path,  # noqa: PLR0913
                    zmax : float,
                    param_seabed : pd.Series(),
                    grazing_angle : float,
-                   calc : str, croco_data, lon, lat, source, param_water, yday) -> float:
+                   calc : str, croco_data, lon, lat, source, param_water, yday) -> (
+        float, float):
     """Generate an environment file (.env) for Bellhop acoustic propagation modeling.
 
     Parameters
@@ -132,7 +133,7 @@ def write_env_file(root : Path,  # noqa: PLR0913
         fid.write(f"0. {10 * round(1.05 * zmax / 10)} "
                   f"{round(1.05 * 100 * rmax) / 100}\n")
 
-    return rmax, file
+    return file
 
 
 def read_shd(filename= Path) -> ndarray[float]:
