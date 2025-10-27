@@ -5,13 +5,10 @@ import numpy as np
 from numpy import ndarray
 import pytest
 
-from utils.reader_ray import read_ray
+from reader_utils import read_ray, read_ray_depth, read_coord_type, read_r
 from utils.sub_read_ray import (
     check_len,
     check_pos,
-    read_depth,
-    read_coord_type,
-    read_r,
 )
 
 
@@ -56,7 +53,7 @@ def test_empty_ray(tmp_path: Path) -> None:
 )
 def test_read_depth (top : float, bottom : float, expected : tuple):
     with expected as e:
-        assert read_depth(top, bottom) == e
+        assert read_ray_depth(top, bottom) == e
 
 
 @pytest.mark.parametrize(

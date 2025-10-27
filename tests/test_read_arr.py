@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from utils.reader_arr import read_arr
-from utils.sub_read_arr import read_dim, read_src_angle, check_len
+from reader_utils import read_arr, read_dim, read_src_angle
+from utils.sub_read_arr import check_len
 
 
 def test_invalid_arr_path() -> None:
