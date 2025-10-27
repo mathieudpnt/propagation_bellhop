@@ -7,8 +7,7 @@ import numpy as np
 from sub_read_ray import read_coord_type, read_r
 from utils.sub_read_ray import read_depth, read_coord_type, read_r
 
-
-def read_ray(file: Path, rmax) -> (list, dict):
+def read_env(file: Path) -> (list, dict):
     """Check the ray file created by bellhop.
 
     Parameters
