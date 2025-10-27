@@ -4,8 +4,11 @@
 from pathlib import Path
 import numpy as np
 
+from sub_read_ray import read_coord_type, read_r
+from utils.sub_read_ray import read_depth, read_coord_type, read_r
 
-def read_env(file: Path) -> (list, dict):
+
+def read_ray(file: Path, rmax) -> (list, dict):
     """Check the ray file created by bellhop.
 
     Parameters
@@ -26,7 +29,7 @@ def read_env(file: Path) -> (list, dict):
     if not file.exists():
         msg = f"{file} does not exist"
         raise FileNotFoundError(msg)
-    file=Path(r'L:/acoustock/Bioacoustique/PROPA/test/Test_01E.ray')
+
     content = [elem.strip() for elem in file.read_text().splitlines()]
 
     if not content:
@@ -38,13 +41,16 @@ def read_env(file: Path) -> (list, dict):
 
     nb_coord = content[2]
     nb_beam = content[3]
+
     top_depth = content[4]
     bottom_depth = content[5]
+    top, bottom=read_depth(top_depth,bottom_depth)
+
     coord_type = content [6]
+    read_coord_type(coord_type)
 
     ra=[]
     za=[]
-    dep_ang=[]
     ray_info=[]
     i=7
     while i<len(content):
@@ -58,6 +64,7 @@ def read_env(file: Path) -> (list, dict):
         for nj in range(nb_steps):
             r[nj], z[nj] = content[i].split()
             i+=1
+        read_r(r, rmax, nb_steps)
         ra.append(r)
         za.append(z)
         # assert 0<=round(r[nj],0)<=rmax
