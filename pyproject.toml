@@ -2,6 +2,9 @@
 name = "propagation_bellhop"
 version = "0.1.0"
 description = "Add your description here"
+authors = [
+    {name = "OSmOSE", email = "osmose@ensta-bretagne.fr"}
+]
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -28,6 +31,13 @@ preview = true
 
 [tool.ruff.format]
 preview = true
+
+[tool.ruff.lint.extend-per-file-ignores]
+"src/**/*.py" = [
+    "CPY001", # no copyright at top of file
+    "DOC201", # no return in function docstring
+    "DOC501", # no raised exceptions in docstring
+]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*.py" = [
