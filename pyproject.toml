@@ -25,6 +25,10 @@ dev = [
 
 [tool.ruff.lint]
 select = ["ALL"]
+preview = true
+
+[tool.ruff.format]
+preview = true
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*.py" = [
