@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 from numpy import ndarray
 
 from utils.core_utils import depth_to_pressure, find_nearest
-from utils.subfonctions import readline_1, zeros
+from core_utils import readline_1, zeros
 
 
 def write_env_file(root : Path,  # noqa: PLR0913

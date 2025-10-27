@@ -25,7 +25,7 @@ from utils.core_utils import (
     ref_coeff_bot,
     ref_coeff_surf,
 )
-from utils.reader_env import read_env
+from reader_utils import read_env
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:

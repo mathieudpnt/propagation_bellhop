@@ -5,19 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from utils.reader_env import read_env
-from utils.sub_read_env import (
-    check_len,
-    check_pos,
-    read_angle,
-    read_bot_prop,
-    read_depth,
-    read_env_param,
-    read_md,
-    read_prof,
-    read_run_type,
-    read_z,
-)
+from reader_utils import read_env, check_len, check_pos, read_env_param, read_md, read_ray_depth, read_z, read_prof, \
+    read_bot_prop, read_run_type, read_angle
 
 
 def test_invalid_env_path() -> None:
@@ -131,7 +120,7 @@ def test_nb_md(line: str, expected: int) -> None:
 )
 def test_depth(line: str, expected: tuple[float, float]) -> None:
     with expected as e:
-        assert read_depth(line) == e
+        assert read_ray_depth(line) == e
 
 
 
