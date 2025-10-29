@@ -55,7 +55,7 @@ A
 
 @pytest.fixture(
     params=[ENV_FILE_VALID, ENV_FILE_INVALID1],
-    ids=lambda c: c.splitlines()[0].strip().strip("'\"")
+    ids=lambda c: c.splitlines()[0].strip().strip("'\""),
 )
 def sample_env(tmp_path: Path, request) -> Path:
     content = request.param

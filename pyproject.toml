@@ -33,13 +33,11 @@ preview = true
 preview = true
 
 [tool.ruff.lint.extend-per-file-ignores]
-"src/**/*.py" = [
+"utils/**/*.py" = [
     "CPY001", # no copyright at top of file
     "DOC201", # no return in function docstring
     "DOC501", # no raised exceptions in docstring
 ]
-
-[tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*.py" = [
     # at least this three should be fine in tests:
     "S101", # asserts allowed in tests...
