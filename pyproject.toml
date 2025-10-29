@@ -38,7 +38,9 @@ preview = true
     "DOC201", # no return in function docstring
     "DOC501", # no raised exceptions in docstring
 ]
-"tests/**/*.py"= [
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = [
     # at least this three should be fine in tests:
     "S101", # asserts allowed in tests...
     "ARG", # Unused function args -> fixtures nevertheless are functionally relevant...
