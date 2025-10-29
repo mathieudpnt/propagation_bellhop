@@ -25,6 +25,7 @@ from utils.core_utils import (
     ref_coeff_bot,
     ref_coeff_surf,
 )
+from utils.reader_utils import f_empty, f_exist, invalid_suffix, read_head_bty
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:
@@ -120,9 +121,13 @@ def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarra
         A 2D array of the bathymetric elevation data for the extracted region.
 
     """
+    f_exist(file)
+    invalid_suffix(file, ".asc")
+    content = f_empty(file)
     # header infos
     with Path.open(file) as f:
         header = [next(f).strip() for _ in range(6)]
+    read_head_bty(header)
     nb_lon = int(header[0].split()[1])
     nb_lat = int(header[1].split()[1])
     lon_min = float(header[2].split()[1])

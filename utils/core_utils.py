@@ -273,21 +273,19 @@ def ref_coeff_bot(teta: float, para_1: list[float, float, float], para_2: list[f
     at2 = para_2.iloc[2]  # attenuation of the sound in seabed (dB/lambda)
 
     w = 2 * np.pi * freq  # omega
-    atp1 = (at1 * freq) / (8.686 * c1)  # conversion de l'attenuation en Np
-    c1b = ((w**2 / c1) - 1j * atp1 * w) / ((w / c1)**2 + atp1**2)
-    # vitesse de propa complexe
+    atp1 = (at1 * freq) / (8.686 * c1)  # attenuation conversion to Np
+    c1b = ((w**2 / c1) - 1j * atp1 * w) / ((w / c1)**2 + atp1**2)  # complex sound speed
 
-    atp2 = (at2 * freq) / (8.686 * c2)  # conversion de l'attenuation en Np
-    c2b = ((w**2 / c2) - 1j * atp2 * w) / ((w / c2)**2 + atp2**2)
-    # vitesse de propa complexe
+    atp2 = (at2 * freq) / (8.686 * c2)  # attenuation conversion to Np
+    c2b = ((w**2 / c2) - 1j * atp2 * w) / ((w / c2)**2 + atp2**2)  # complex sound speed
 
     sint1 = np.sin(np.pi / 180 * teta)
     cost1 = np.cos(np.pi / 180 * teta)
     sint2 = np.sqrt(1 - (c2b * cost1 / c1b)**2)
-    # calcul de l'angle de transmission dans le sol (loi de Snell)
+    # Calculation of the transmission angle in the ground (Snell's law)
 
-    z1 = rho1 * c1b / sint1  # calcul de l'impédance acoustique
-    z2 = (rho2 * c2b) / sint2  # calcul de l'impédance acoustique
+    z1 = rho1 * c1b / sint1  # acoustic impedance calculation
+    z2 = (rho2 * c2b) / sint2  # acoustic impedance calculation
 
     return (z2 - z1) / (z2 + z1)
 

@@ -1,7 +1,32 @@
+
 import itertools
 from pathlib import Path
 
 import numpy as np
+from numpy import ndarray
+
+
+def f_exist(file: Path) -> None:
+    """Check if the path to the file exists."""
+    if not file.exists():
+        msg = f"{file} does not exist"
+        raise FileNotFoundError(msg)
+
+
+def invalid_suffix(file: Path, suffix: str) -> None:
+    """Check if the suffix of the file is the one expected."""
+    if file.suffix != suffix:
+        msg = f"{file} is not a {suffix} file"
+        raise ValueError(msg)
+
+
+def f_empty(file: Path) -> list[str]:
+    """Check if the file is empty."""
+    content = file.read_text(encoding="utf-8").splitlines()
+    if not content:
+        msg = f"{file} is empty"
+        raise ValueError(msg)
+    return content
 
 
 def read_env(file: Path) -> (list, dict):
@@ -18,19 +43,9 @@ def read_env(file: Path) -> (list, dict):
         The contents of the environmental file.
 
     """
-    if file.suffix != ".env":
-        msg = f"{file} is not a .env file"
-        raise ValueError(msg)
-
-    if not file.exists():
-        msg = f"{file} does not exist"
-        raise FileNotFoundError(msg)
-
-    content = file.read_text().splitlines()
-
-    if not content:
-        msg = f"{file} is empty"
-        raise ValueError(msg)
+    f_exist(file)
+    invalid_suffix(file, ".env")
+    content = f_empty(file)
 
     title = content[0]
     frequency = int(content[1])
@@ -125,19 +140,9 @@ def read_arr(file: Path) -> list:
         The contents of the .arr file.
 
     """
-    if file.suffix != ".arr":
-        msg = f"{file} is not a .arr file"
-        raise ValueError(msg)
-
-    if not file.exists():
-        msg = f"{file} does not exist"
-        raise FileNotFoundError(msg)
-
-    content = [elem.strip() for elem in file.read_text().splitlines()]
-
-    if not content:
-        msg = f"{file} is empty"
-        raise ValueError(msg)
+    f_exist(file)
+    invalid_suffix(file, ".arr")
+    content = f_empty(file)
 
     dimension = content[0].strip()
     dim = read_dim(dimension, 4)
@@ -148,7 +153,6 @@ def read_arr(file: Path) -> list:
     nb_rcv_r, rcv_r = content[4].split()
 
     narr = int(content[5])
-    narr = int(content[6])
 
     i = 7
     amp = []
@@ -216,19 +220,9 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
         The contents of the ray file.
 
     """
-    if file.suffix != ".ray":
-        msg = f"{file} is not a .ray file"
-        raise ValueError(msg)
-
-    if not file.exists():
-        msg = f"{file} does not exist"
-        raise FileNotFoundError(msg)
-
-    content = [elem.strip() for elem in file.read_text().splitlines()]
-
-    if not content:
-        msg = f"{file} is empty"
-        raise ValueError(msg)
+    f_exist(file)
+    invalid_suffix(file, ".ray")
+    content = f_empty(file)
 
     title = content[0]
     frequency = float(content[1])
@@ -277,23 +271,34 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
     return content, env_data
 
 
-def check_len_line(line, nb) -> bool:
+def read_head_bty(header: tuple) -> None:
+    """Read the header of bathymetric file."""
+    if not all(check_len_line(x, 2) for x in header):
+        msg = "Wrong header in bathymetric file"
+        raise ValueError(msg)
+
+
+def check_len_line(line: str, nb: int) -> bool:
+    """Check that the lenght of a line is the one expected."""
     line = line.split(" ")
     return len(line) == nb
 
 
-def check_len_list(list: list, nb) -> bool:
-    return len(list) == nb
+def check_len_list(list_: list, nb: int) -> bool:
+    """Check that the lenght of a list is the one expected."""
+    return len(list_) == nb
 
 
-def read_env_param(line, nb) -> list[float]:
+def read_env_param(line: str, nb: int) -> list[float]:
+    """Read the environment parameters."""
     if not (check_len_line(line, nb)):
         msg = "Invalid environmental characteristics line"
         raise ValueError(msg)
     return line.split(" ")
 
 
-def read_md(number_media) -> int:
+def read_md(number_media: int) -> int:
+    """Read the number of media."""
     number_media = int(number_media)
     if number_media != 1:
         msg = f"Invalid media line: {number_media}"
@@ -301,7 +306,8 @@ def read_md(number_media) -> int:
     return number_media
 
 
-def read_depth(a, b) -> tuple:
+def read_depth(a: str, b: str) -> tuple:
+    """Read the depth of top and bottom."""
     a, b = float(a), float(b)
     if not all(value >= 0 for value in (a, b)):
         msg = "Invalid depth line"
@@ -312,7 +318,8 @@ def read_depth(a, b) -> tuple:
     return a, b
 
 
-def read_z(z0, zmin) -> float:
+def read_z(z0: str, zmin: float) -> float:
+    """Read the first value of depth profile and compares to zmin."""
     z0 = float(z0)
     if z0 != zmin:
         msg = "z0 must be equal to zmin"
@@ -320,24 +327,27 @@ def read_z(z0, zmin) -> float:
     return z0
 
 
-def read_prof(d_prof) -> list[float]:
+def read_prof(d_prof: list[float]) -> list[float]:
+    """Read depth profile and assert it is increading."""
     if not all(x < y for x, y in itertools.pairwise(d_prof)):
         msg = "Depth should be increasing"
         raise ValueError(msg)
     return d_prof
 
 
-def read_bot_prop(line, nb, zmax) -> list[float]:
+def read_bot_prop(line: str, nb: int, zmax: float) -> list[float]:
+    """Read bottom properties."""
     if not (check_len_line(line, nb)):
         msg = "Invalid len bot_prop line"
         raise ValueError(msg)
-    if float(line.split(" ")[0]) != zmax:
+    if float(line.split(" ", maxsplit=1)[0]) != zmax:
         msg = "Invalid bot_prop line"
         raise ValueError(msg)
     return line.split(" ")[:-1]
 
 
-def read_run_type(line) -> str:
+def read_run_type(line: str) -> str:
+    """Read the run type."""
     if line not in {"E", "I", "A", "R"}:
         msg = "Incorrect run type"
         raise ValueError(msg)
@@ -345,10 +355,12 @@ def read_run_type(line) -> str:
 
 
 def check_angle(angle: float) -> bool:
-    return -180 <= angle <= 180
+    """Check if the angle is between -180 and 180 degrees."""
+    return -180 <= angle <= 180  # noqa: PLR2004
 
 
 def read_angle(line: str) -> tuple[float, float]:
+    """Read the beam limit angles."""
     x, y, = line.split(" ")[:2]
     x, y = float(x), float(y)
     if not all(check_angle(angle) for angle in (x, y)):
@@ -360,18 +372,21 @@ def read_angle(line: str) -> tuple[float, float]:
     return x, y
 
 
-def check_inf(a, b):
+def check_inf(a: float, b: float) -> bool:
+    """Check if "a" is smaller than "b"."""
     return a < b
 
 
-def read_coord_type(line):
+def read_coord_type(line: str) -> str:
+    """Read the coordinate type."""
     if line != "'rz'":
         msg = "Invalid coordinate type"
         raise ValueError(msg)
     return line
 
 
-def read_r(r, rmax, nsteps):
+def read_r(r: ndarray, rmax: float, nsteps: int) -> ndarray:
+    """Read the range profile."""
     for nj in range(len(r)):
         r[nj] = float(r[nj])
         if not (r[nj]) >= 0:
@@ -389,7 +404,8 @@ def read_r(r, rmax, nsteps):
     return r
 
 
-def read_dim(line, nb):
+def read_dim(line: str, nb: int) -> str:
+    """Read the dimension of calcul."""
     if not check_len_list(line, nb):
         msg = f"Invalid len of dimension line: {line}"
         raise ValueError(msg)
@@ -398,10 +414,3 @@ def read_dim(line, nb):
         msg = f"Invalid dimension line: {dim}"
         raise ValueError(msg)
     return dim
-
-
-def read_src_angle(list):
-    if not all(x > y for x, y in zip(list, list[1:], strict=False)):
-        msg = "Invalid source angle list"
-        raise ValueError(msg)
-    return list

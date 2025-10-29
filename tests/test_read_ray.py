@@ -3,13 +3,20 @@ from pathlib import Path
 
 import pytest
 from numpy import ndarray
-from reader_utils import read_coord_type, read_depth, read_r, read_ray
+from reader_utils import (
+    f_empty,
+    f_exist,
+    invalid_suffix,
+    read_coord_type,
+    read_depth,
+    read_r,
+)
 
 
 def test_invalid_ray_path() -> None:
     invalid_path = Path(r"wrong_path\that_does\not_exist.ray")
     with pytest.raises(FileNotFoundError):
-        read_ray(invalid_path, rmax=1781)
+        f_exist(invalid_path)
 
 
 def test_invalid_ray_suffix(tmp_path: Path) -> None:
@@ -17,14 +24,14 @@ def test_invalid_ray_suffix(tmp_path: Path) -> None:
     (tmp_path / invalid_file).touch()
     invalid_file.write_text("test")
     with pytest.raises(ValueError, match=r"is not a .ray file"):
-        read_ray(invalid_file, rmax=1781)
+        invalid_suffix(invalid_file, ".ray")
 
 
 def test_empty_ray(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty_file.ray"
     empty_file.touch()
     with pytest.raises(ValueError, match="is empty"):
-        read_ray(empty_file, rmax=1781)
+        f_empty(empty_file)
 
 
 @pytest.mark.parametrize(
@@ -47,7 +54,7 @@ def test_empty_ray(tmp_path: Path) -> None:
         ),
     ],
 )
-def test_read_depth(top: float, bottom: float, expected: tuple):
+def test_read_depth(top: float, bottom: float, expected: tuple) -> None:
     with expected as e:
         assert read_depth(top, bottom) == e
 
@@ -72,7 +79,7 @@ def test_read_depth(top: float, bottom: float, expected: tuple):
         ),
     ],
 )
-def test_read_coord(line: str, expected: str):
+def test_read_coord(line: str, expected: str) -> None:
     with expected as e:
         assert read_coord_type(line) == e
 
@@ -110,6 +117,6 @@ def test_read_coord(line: str, expected: str):
         ),
     ],
 )
-def test_read_r(r: ndarray, rmax: float, nsteps: str, expected: str):
+def test_read_r(r: ndarray, rmax: float, nsteps: str, expected: str) -> None:
     with expected as e:
         assert read_r(r, rmax, nsteps) == e

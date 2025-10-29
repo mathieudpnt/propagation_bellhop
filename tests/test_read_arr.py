@@ -3,28 +3,33 @@ from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
-from reader_utils import read_arr, read_dim, read_src_angle
+from reader_utils import (
+    f_empty,
+    f_exist,
+    invalid_suffix,
+    read_dim,
+)
 
 
 def test_invalid_arr_path() -> None:
     invalid_path = Path(r"wrong_path\that_does\not_exist.arr")
     with pytest.raises(FileNotFoundError):
-        read_arr(invalid_path)
+        f_exist(invalid_path)
 
 
-def test_invalid_env_suffix(tmp_path: Path) -> None:
+def test_invalid_arr_suffix(tmp_path: Path) -> None:
     invalid_file = tmp_path / "file.not_arr"
     (tmp_path / invalid_file).touch()
     invalid_file.write_text("test")
     with pytest.raises(ValueError, match=r"is not a .arr file"):
-        read_arr(invalid_file)
+        invalid_suffix(invalid_file, ".arr")
 
 
-def test_empty_env(tmp_path: Path) -> None:
+def test_empty_arr(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty_file.arr"
     empty_file.touch()
     with pytest.raises(ValueError, match="is empty"):
-        read_arr(empty_file)
+        f_empty(empty_file)
 
 
 @pytest.mark.parametrize(
@@ -53,28 +58,3 @@ def test_empty_env(tmp_path: Path) -> None:
 def test_read_dim(line: str, nb: int, expected: list[str]) -> None:
     with expected as e:
         assert read_dim(line, nb) == e
-
-
-@pytest.mark.parametrize(
-    ("list", "expected"),
-    [
-        pytest.param(
-            [4, 3, 2, 1],
-            nullcontext([4, 3, 2, 1]),
-            id="Valide source angle list",
-        ),
-        pytest.param(
-            [1, 2, 3, 4],
-            pytest.raises(ValueError, match="Invalid source angle list"),
-            id="Depth should be decreasing",
-        ),
-        pytest.param(
-            [1, 5, 3, 1],
-            pytest.raises(ValueError, match="Invalid source angle list"),
-            id="Depth should be decreasing",
-        ),
-    ],
-)
-def test_read_src_ang(list_: list[float], expected: list[str]) -> None:
-    with expected as e:
-        assert read_src_angle(list_) == e

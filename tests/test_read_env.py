@@ -4,10 +4,12 @@ from pathlib import Path
 
 import pytest
 from reader_utils import (
+    f_empty,
+    f_exist,
+    invalid_suffix,
     read_angle,
     read_bot_prop,
     read_depth,
-    read_env,
     read_env_param,
     read_md,
     read_prof,
@@ -19,7 +21,7 @@ from reader_utils import (
 def test_invalid_env_path() -> None:
     invalid_path = Path(r"wrong_path\that_does\not_exist.env")
     with pytest.raises(FileNotFoundError):
-        read_env(invalid_path)
+        f_exist(invalid_path)
 
 
 def test_invalid_env_suffix(tmp_path: Path) -> None:
@@ -27,14 +29,14 @@ def test_invalid_env_suffix(tmp_path: Path) -> None:
     (tmp_path / invalid_file).touch()
     invalid_file.write_text("test")
     with pytest.raises(ValueError, match=r"is not a .env file"):
-        read_env(invalid_file)
+        invalid_suffix(invalid_file, ".env")
 
 
 def test_empty_env(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty_file.env"
     empty_file.touch()
     with pytest.raises(ValueError, match="is empty"):
-        read_env(empty_file)
+        f_empty(empty_file)
 
 
 @pytest.mark.parametrize(
@@ -44,7 +46,7 @@ def test_empty_env(tmp_path: Path) -> None:
             "1 2 a bc /",
             5,
             nullcontext(["1", "2", "a", "bc", "/"]),
-            id="Valide number of values",
+            id="Valid number of values",
         ),
         pytest.param(
             "2 abc /",
@@ -70,7 +72,7 @@ def test_env_param(line: str, nb: int, expected: list[str]) -> None:
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
-        pytest.param("1", nullcontext(1), id="Valide media line : 1"),
+        pytest.param("1", nullcontext(1), id="Valid media line : 1"),
         pytest.param(
             "2",
             pytest.raises(ValueError, match="Invalid media line: 2"),
@@ -91,7 +93,7 @@ def test_nb_md(line: str, expected: int) -> None:
 @pytest.mark.parametrize(
     ("a", "b", "expected"),
     [
-        pytest.param("0.0", "250.0", nullcontext((0.0, 250.0)), id="Valide depth line"),
+        pytest.param("0.0", "250.0", nullcontext((0.0, 250.0)), id="Valid depth line"),
         pytest.param(
             "-15.0", "250.0",
             pytest.raises(ValueError, match="Invalid depth line"),
@@ -119,7 +121,7 @@ def test_depth(a: str, b: str, expected: tuple[float, float]) -> None:
     [
         pytest.param(
             "0.0", 0.0, nullcontext(0.0),
-            id="Valide depth line: 0.0 0.0",
+            id="Valid depth line: 0.0 0.0",
         ),
         pytest.param(
             "0.0", 10.0,
@@ -172,7 +174,7 @@ def test_read_prof(d_prof: list[float, float, float, float],
             7,
             250,
             nullcontext(["250", "1600.0", "0.0", "1.75", "1.05", "0.0"]),
-            id="Valide bot_prop line",
+            id="Valid bot_prop line",
         ),
         pytest.param(
             "250 1600.0 0.0 1.75 1.05", 7, 250,
