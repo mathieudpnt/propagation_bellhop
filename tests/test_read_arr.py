@@ -2,17 +2,15 @@
 from contextlib import nullcontext
 from pathlib import Path
 
-import numpy as np
 import pytest
-
 from reader_utils import read_arr, read_dim, read_src_angle
-from utils.sub_read_arr import check_len
 
 
 def test_invalid_arr_path() -> None:
     invalid_path = Path(r"wrong_path\that_does\not_exist.arr")
     with pytest.raises(FileNotFoundError):
         read_arr(invalid_path)
+
 
 def test_invalid_env_suffix(tmp_path: Path) -> None:
     invalid_file = tmp_path / "file.not_arr"
@@ -21,11 +19,13 @@ def test_invalid_env_suffix(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match=r"is not a .arr file"):
         read_arr(invalid_file)
 
+
 def test_empty_env(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty_file.arr"
     empty_file.touch()
     with pytest.raises(ValueError, match="is empty"):
         read_arr(empty_file)
+
 
 @pytest.mark.parametrize(
     ("line", "nb", "expected"),
@@ -36,7 +36,7 @@ def test_empty_env(tmp_path: Path) -> None:
             nullcontext("2D"),
             id="Valide dimension",
         ),
-        pytest.param(
+            pytest.param(
             "'2D a'",
             4,
             pytest.raises(ValueError, match="Invalid len of dimension line: '2D a'"),
@@ -50,9 +50,10 @@ def test_empty_env(tmp_path: Path) -> None:
         ),
     ],
 )
-def test_read_dim(line: str, nb : int, expected: list[str]) -> None:
+def test_read_dim(line: str, nb: int, expected: list[str]) -> None:
     with expected as e:
         assert read_dim(line, nb) == e
+
 
 @pytest.mark.parametrize(
     ("list", "expected"),
@@ -74,7 +75,6 @@ def test_read_dim(line: str, nb : int, expected: list[str]) -> None:
         ),
     ],
 )
-def test_read_src_ang(list: list[float], expected: list[str]) -> None:
+def test_read_src_ang(list_: list[float], expected: list[str]) -> None:
     with expected as e:
-        assert read_src_angle(list) == e
-
+        assert read_src_angle(list_) == e

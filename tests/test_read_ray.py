@@ -1,15 +1,9 @@
 from contextlib import nullcontext
 from pathlib import Path
 
-import numpy as np
-from numpy import ndarray
 import pytest
-
-from reader_utils import read_ray, read_ray_depth, read_coord_type, read_r
-from utils.sub_read_ray import (
-    check_len,
-    check_pos,
-)
+from numpy import ndarray
+from reader_utils import read_coord_type, read_depth, read_r, read_ray
 
 
 def test_invalid_ray_path() -> None:
@@ -17,12 +11,14 @@ def test_invalid_ray_path() -> None:
     with pytest.raises(FileNotFoundError):
         read_ray(invalid_path, rmax=1781)
 
+
 def test_invalid_ray_suffix(tmp_path: Path) -> None:
     invalid_file = tmp_path / "file.not_ray"
     (tmp_path / invalid_file).touch()
     invalid_file.write_text("test")
     with pytest.raises(ValueError, match=r"is not a .ray file"):
-        read_ray(invalid_file,rmax=1781)
+        read_ray(invalid_file, rmax=1781)
+
 
 def test_empty_ray(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty_file.ray"
@@ -36,7 +32,7 @@ def test_empty_ray(tmp_path: Path) -> None:
     [
         pytest.param(
             "0.0", "250",
-            nullcontext((0.0,250)),
+            nullcontext((0.0, 250)),
             id="Valide depth",
         ),
         pytest.param(
@@ -45,15 +41,15 @@ def test_empty_ray(tmp_path: Path) -> None:
             id="Depth must be positive",
         ),
         pytest.param(
-            "250","0.0",
+            "250", "0.0",
             pytest.raises(ValueError, match="Invalid depth line"),
             id="Depth must be increasing",
         ),
     ],
 )
-def test_read_depth (top : float, bottom : float, expected : tuple):
+def test_read_depth(top: float, bottom: float, expected: tuple):
     with expected as e:
-        assert read_ray_depth(top, bottom) == e
+        assert read_depth(top, bottom) == e
 
 
 @pytest.mark.parametrize(
@@ -76,7 +72,7 @@ def test_read_depth (top : float, bottom : float, expected : tuple):
         ),
     ],
 )
-def test_read_coord (line : str, expected : str):
+def test_read_coord(line: str, expected: str):
     with expected as e:
         assert read_coord_type(line) == e
 
@@ -114,6 +110,6 @@ def test_read_coord (line : str, expected : str):
         ),
     ],
 )
-def test_read_r (r : ndarray, rmax : float, nsteps : str, expected : str):
+def test_read_r(r: ndarray, rmax: float, nsteps: str, expected: str):
     with expected as e:
         assert read_r(r, rmax, nsteps) == e

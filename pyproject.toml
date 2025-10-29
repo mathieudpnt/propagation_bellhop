@@ -2,6 +2,9 @@
 name = "propagation_bellhop"
 version = "0.1.0"
 description = "Add your description here"
+authors = [
+    {name = "OSmOSE", email = "osmose@ensta-bretagne.fr"}
+]
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -14,7 +17,6 @@ dependencies = [
     "cartopy",
     "geopy",
     "netCDF4",
-    "coverage",
 ]
 
 [dependency-groups]
@@ -31,7 +33,12 @@ preview = true
 preview = true
 
 [tool.ruff.lint.extend-per-file-ignores]
-"tests/**/*.py" = [
+"utils/**/*.py" = [
+    "CPY001", # no copyright at top of file
+    "DOC201", # no return in function docstring
+    "DOC501", # no raised exceptions in docstring
+]
+"tests/**/*.py"= [
     # at least this three should be fine in tests:
     "S101", # asserts allowed in tests...
     "ARG", # Unused function args -> fixtures nevertheless are functionally relevant...

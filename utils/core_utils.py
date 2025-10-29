@@ -14,11 +14,15 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+if TYPE_CHECKING:
+    import _io
 
-def depth_to_pressure(z:float, lat:float) -> float:
+
+def depth_to_pressure(z: float, lat: float) -> float:
     """Convert depth (m) to pressure (kPa) (Leroy & Parthiot, 1998).
 
     Parameters
@@ -44,8 +48,9 @@ def depth_to_pressure(z:float, lat:float) -> float:
 
     return hz * kz * 1000
 
-def compute_sound_speed(salinity:float, temperature:float, depth:float, equation:str,
-                        lat:float) -> float:
+
+def compute_sound_speed(salinity: float, temperature: float, depth: float,
+                        equation: str, lat: float) -> float:
     """Compute the speed of sound in seawater using different empirical equations.
 
     Parameters
@@ -56,8 +61,6 @@ def compute_sound_speed(salinity:float, temperature:float, depth:float, equation
         Temperature in degrees Celsius.
     depth : float
         Depth in meters.
-    lat: float | None
-        Latitude in degrees.
     equation : str
         The sound speed equation to use. Options are:
             - "mackenzie" : Mackenzie (1981)
@@ -65,6 +68,8 @@ def compute_sound_speed(salinity:float, temperature:float, depth:float, equation
             - "chen" : Chen and Millero (1977)
         For further details on the sound speed equations please read the following page:
         https://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
+    lat: float | None
+        Latitude in degrees.
 
     Returns
     -------
@@ -91,7 +96,7 @@ def compute_sound_speed(salinity:float, temperature:float, depth:float, equation
             raise ValueError(msg)
 
         p = depth_to_pressure(depth, lat) * 0.010197162129779  # convertion
-                                                           # from dBar to kg.cm-2
+        # from dBar to kg.cm-2
 
         # Coefficients
         c000 = 1402.392
@@ -218,11 +223,11 @@ def compute_sound_speed(salinity:float, temperature:float, depth:float, equation
 
         return cw + a * salinity + b * salinity**1.5 + depth * salinity**2
 
-    error=f"Unrecognized equation: {equation.lower()}"
+    error = f"Unrecognized equation: {equation.lower()}"
     raise ValueError(error)
 
 
-def find_nearest(array:np.array, value:float) -> float:
+def find_nearest(array: np.array, value: float) -> float:
     """Find index where array is closest to value.
 
     Parameters
@@ -236,8 +241,9 @@ def find_nearest(array:np.array, value:float) -> float:
     array = np.asarray(array)
     return (np.abs(array - value)).argmin()
 
-def ref_coeff_bot(teta : float, para_1 : list[float, float, float], para_2 : list[float,
-                    float, float], freq : float) -> float:
+
+def ref_coeff_bot(teta: float, para_1: list[float, float, float], para_2: list[float,
+                    float, float], freq: float) -> float:
     """"Calculate the reflectcion coefficient at the bottom.
 
     The interface is considered fluid-fluid at the bottom of the environment
@@ -258,33 +264,35 @@ def ref_coeff_bot(teta : float, para_1 : list[float, float, float], para_2 : lis
     float : Reflection coefficient for a fluid-fluid interface
 
     """
-    c1 = para_1[0] # soundspeed in the water
-    rho1 = para_1[1] # density of the water
-    at1 = para_1[2] # attenuation of the sound in the water (dB/lambda)
+    c1 = para_1[0]  # soundspeed in the water
+    rho1 = para_1[1]  # density of the water
+    at1 = para_1[2]  # attenuation of the sound in the water (dB/lambda)
 
-    c2 = para_2.iloc[0] # soundspeed in seabed
-    rho2 = para_2.iloc[1] # density of seabed
-    at2 = para_2.iloc[2] # attenuation of the sound in seabed (dB/lambda)
+    c2 = para_2.iloc[0]  # soundspeed in seabed
+    rho2 = para_2.iloc[1]  # density of seabed
+    at2 = para_2.iloc[2]  # attenuation of the sound in seabed (dB/lambda)
 
-    w = 2 * np.pi * freq # omega
-    atp1 = (at1 * freq) / (8.686 * c1) # conversion de l'attenuation en Np
-    c1b =	((w**2/c1)-1j*atp1*w)/((w/c1)**2+atp1**2) # vitesse de propa complexe
-    atp2 = (at2 * freq) / (8.686 * c2) # conversion de l'attenuation en Np
-    c2b =	((w**2/c2)-1j*atp2*w)/((w/c2)**2+atp2**2) # vitesse de propa complexe
+    w = 2 * np.pi * freq  # omega
+    atp1 = (at1 * freq) / (8.686 * c1)  # conversion de l'attenuation en Np
+    c1b = ((w**2 / c1) - 1j * atp1 * w) / ((w / c1)**2 + atp1**2)
+    # vitesse de propa complexe
+
+    atp2 = (at2 * freq) / (8.686 * c2)  # conversion de l'attenuation en Np
+    c2b = ((w**2 / c2) - 1j * atp2 * w) / ((w / c2)**2 + atp2**2)
+    # vitesse de propa complexe
 
     sint1 = np.sin(np.pi / 180 * teta)
     cost1 = np.cos(np.pi / 180 * teta)
-    sint2 = np.sqrt(1-(c2b*cost1/c1b)**2) # calcul de l'angle de transmission dans
-                                            # le sol (loi de Snell)
+    sint2 = np.sqrt(1 - (c2b * cost1 / c1b)**2)
+    # calcul de l'angle de transmission dans le sol (loi de Snell)
 
-    z1=rho1*c1b/sint1 # calcul de l'impédance acoustique
-    z2=(rho2*c2b)/sint2 # calcul de l'impédance acoustique
+    z1 = rho1 * c1b / sint1  # calcul de l'impédance acoustique
+    z2 = (rho2 * c2b) / sint2  # calcul de l'impédance acoustique
 
-    return (z2-z1)/(z2+z1)
+    return (z2 - z1) / (z2 + z1)
 
 
-
-def ref_coeff_surf(teta : float, wind_speed : float, freq : float) -> float:
+def ref_coeff_surf(teta: float, wind_speed: float, freq: float) -> float:
     """Calculate the surface reflection coefficient.
 
     Calculations based on Beckmann equation
@@ -303,14 +311,14 @@ def ref_coeff_surf(teta : float, wind_speed : float, freq : float) -> float:
         Reflection coefficient
 
     """
-    term 	= np.exp(-0.0381 * teta ** 2 / (3 + 2.6 * wind_speed)) / np.sqrt(5 *
+    term = np.exp(-0.0381 * teta ** 2 / (3 + 2.6 * wind_speed)) / np.sqrt(5 *
                                                         np.pi / (3 + 2.6 * wind_speed))
-    k 	= np.minimum(0.707, (np.sin(np.pi / 180 * teta) + 0.1 * term))
+    k = np.minimum(0.707, (np.sin(np.pi / 180 * teta) + 0.1 * term))
     return ((0.3 + (0.7 / (1 + (0.0182 * wind_speed ** 2 * freq / 40) ** 2)))
             * np.sqrt(1 - k))
 
 
-def atten_fg(f :float, s : float, t : float, z : float, ph : float) -> float:
+def atten_fg(f: float, s: float, t: float, z: float, ph: float) -> float:
     """Calculate the attenuation coefficient.
 
     Calculations based on Francois & Garrison
@@ -326,36 +334,37 @@ def atten_fg(f :float, s : float, t : float, z : float, ph : float) -> float:
     z : float
         Immersion in m
     ph : float
-        pH (8 typically). Very sensitive at low frequency
+        ph (8 typically). Very sensitive at low frequency
 
     Returns
     -------
     Attenuation coefficient in dB/km : float
 
     """
-    c = 1412+3.21*t+1.19*s+0.0167*z
+    c = 1412 + 3.21 * t + 1.19 * s + 0.0167 * z
 
     # Bo(OH)3
-    a1 = 8.68/c*10**(0.78*ph-5)
+    a1 = 8.68 / c * 10**(0.78 * ph - 5)
     p1 = 1
-    f1 = 2.8*np.sqrt(s/35)*10**(4-(1245/(273+t)))
+    f1 = 2.8 * np.sqrt(s / 35) * 10**(4 - (1245 / (273 + t)))
 
     # Mg(SO)4
-    a2 = 21.44*s/c*(1+0.025*t)
-    p2 = 1-1.37e-4*z+6.2e-9*z**2
-    f2 = (8.17*10**(8-(1990/(273+t))))/(1+0.0018*(s-35))
+    a2 = 21.44 * s / c * (1 + 0.025 * t)
+    p2 = 1 - 1.37e-4 * z + 6.2e-9 * z**2
+    f2 = (8.17 * 10**(8 - (1990 / (273 + t)))) / (1 + 0.0018 * (s - 35))
 
     # viscosity
-    p3 = 1-3.83e-5*z+4.9e-10*z**2
-    if t<=20:  # noqa: PLR2004
-        a3 = 4.937e-4-2.59e-5*t+9.11e-7*t**2-1.5e-8*t**3
+    p3 = 1 - 3.83e-5 * z + 4.9e-10 * z**2
+    if t <= 20:  # noqa: PLR2004
+        a3 = 4.937e-4 - 2.59e-5 * t + 9.11e-7 * t**2 - 1.5e-8 * t**3
     else:
-        a3 = 3.964e-4-1.146e-5*t+1.45e-7*t**2-6.5e-10*t**3
+        a3 = 3.964e-4 - 1.146e-5 * t + 1.45e-7 * t**2 - 6.5e-10 * t**3
 
-    return a1*p1*(f1*f**2)/(f**2+f1**2) + a2*p2*(f2*f**2)/(f**2+f2**2) + a3*p3*f**2
+    return (a1 * p1 * (f1 * f**2) / (f**2 + f1**2) + a2 * p2 * (f2 * f**2) /
+            (f**2 + f2**2) + a3 * p3 * f**2)
 
 
-def find_pow2(x : float) -> int:
+def find_pow2(x: float) -> int:
     """Nearest power of 2 by higher value.
 
     Parameters
@@ -369,24 +378,26 @@ def find_pow2(x : float) -> int:
         Nearest power of 2
 
     """
-    n=0
-    p=1
-    while p<x:
-       p = p*2
-       n = n+1
+    n = 0
+    p = 1
+    while p < x:
+        p *= 2
+        n += 1
     return n
 
 
-def readline_1(fid, nb):
+def readline_1(fid: _io.TextIOWrapper, nb: int) -> float:
+    """Read the nbth element of a line."""
     return float(fid.readline().split()[nb])
 
 
-def zeros(size, flag):
-    if flag == 1 : # if complexe
+def zeros(size: int, flag: int) -> np.array:
+    """Create an array of zeros, could be real (0) or complex (1)."""
+    if flag == 1:  # if complexe
         return np.zeros(size) + 1j * np.zeros(size)
-    # if real
-    return np.zeros( size )
+    return np.zeros(size)
 
 
-def date_to_number(m,d):
+def date_to_number(m: int, d: int) -> int:
+    """Convert date to number in the year."""
     return (m - 1) * 30 + d
