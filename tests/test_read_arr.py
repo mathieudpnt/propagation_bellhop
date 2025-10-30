@@ -6,7 +6,7 @@ import pytest
 from reader_utils import (
     check_empty_file,
     f_exist,
-    invalid_suffix,
+    check_suffix,
     read_dim,
 )
 
@@ -22,7 +22,7 @@ def test_invalid_arr_suffix(tmp_path: Path) -> None:
     (tmp_path / invalid_file).touch()
     invalid_file.write_text("test")
     with pytest.raises(ValueError, match=r"is not a .arr file"):
-        invalid_suffix(invalid_file, ".arr")
+        check_suffix(invalid_file, ".arr")
 
 
 def test_empty_arr(tmp_path: Path) -> None:

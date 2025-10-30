@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.reader_utils import f_exist, invalid_suffix, check_empty_file
+from utils.reader_utils import f_exist, check_suffix, check_empty_file
 
 
 def test_invalid_bty_path() -> None:
@@ -17,7 +17,7 @@ def test_invalid_bty_suffix(tmp_path: Path) -> None:
     (tmp_path / invalid_file).touch()
     invalid_file.write_text("test")
     with pytest.raises(ValueError, match=r"is not a .bty file"):
-        invalid_suffix(invalid_file, ".bty")
+        check_suffix(invalid_file, ".bty")
 
 
 def test_empty_bty(tmp_path: Path) -> None:

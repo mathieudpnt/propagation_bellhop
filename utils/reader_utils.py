@@ -13,7 +13,7 @@ def f_exist(file: Path) -> None:
         raise FileNotFoundError(msg)
 
 
-def invalid_suffix(file: Path, suffix: str) -> None:
+def check_suffix(file: Path, suffix: str) -> None:
     """Check if the suffix of the file is the one expected."""
     if file.suffix != suffix:
         msg = f"{file} is not a {suffix} file"
@@ -43,7 +43,7 @@ def read_env(file: Path) -> (list, dict):
 
     """
     f_exist(file)
-    invalid_suffix(file, ".env")
+    check_suffix(file, ".env")
     check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
@@ -141,7 +141,7 @@ def read_arr(file: Path) -> list:
 
     """
     f_exist(file)
-    invalid_suffix(file, ".arr")
+    check_suffix(file, ".arr")
     check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
@@ -222,7 +222,7 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
 
     """
     f_exist(file)
-    invalid_suffix(file, ".ray")
+    check_suffix(file, ".ray")
     check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 

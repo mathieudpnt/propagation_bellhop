@@ -25,7 +25,7 @@ from utils.core_utils import (
     ref_coeff_bot,
     ref_coeff_surf,
 )
-from utils.reader_utils import check_empty_file, f_exist, invalid_suffix, read_head_bty
+from utils.reader_utils import check_empty_file, f_exist, check_suffix, read_head_bty
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:
@@ -122,7 +122,7 @@ def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarra
 
     """
     f_exist(file)
-    invalid_suffix(file, ".asc")
+    check_suffix(file, ".asc")
     check_empty_file(file)
 
     # header infos

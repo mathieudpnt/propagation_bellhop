@@ -6,7 +6,7 @@ from numpy import ndarray
 from reader_utils import (
     check_empty_file,
     f_exist,
-    invalid_suffix,
+    check_suffix,
     read_coord_type,
     read_depth,
     read_r,
@@ -24,7 +24,7 @@ def test_invalid_ray_suffix(tmp_path: Path) -> None:
     (tmp_path / invalid_file).touch()
     invalid_file.write_text("test")
     with pytest.raises(ValueError, match=r"is not a .ray file"):
-        invalid_suffix(invalid_file, ".ray")
+        check_suffix(invalid_file, ".ray")
 
 
 def test_empty_ray(tmp_path: Path) -> None:
