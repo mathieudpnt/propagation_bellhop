@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
+from core_utils import check_empty_file, check_file_exist, check_suffix
 from netCDF4 import Dataset
 from numpy import dtype, float64, floating, ndarray
 from numpy.fft import fft, ifft
@@ -291,10 +292,8 @@ def run_bellhop(executable: Path,
                 z_max: float,
                 source: pd.Series,
                 station: pd.Series,
-                dist: np.array,
-                zb: Iterable,
+                bty: tuple[list[float], np.ndarray[float], np.ndarray[float]],
                 sound_speed: np.array,
-                z_transect: np.array,
                 param_seabed: pd.Series,
                 croco_data: pd.Series,
                 param_water: pd.Series,
@@ -309,10 +308,9 @@ def run_bellhop(executable: Path,
 
     Parameters
     ----------
-    executable : Path
-        Path to the Bellhop executable file.
-    bellhop_dir : Path
-        Directory where Bellhop input and output files will be stored.
+    roots : list[Path]
+        List of Path containing the pass to Bellhop executable file and the directory
+        where Bellhop input and output files will be stored.
     filename : str
         Base name for the Bellhop files (without extension).
     calc : str or list of str
@@ -324,15 +322,14 @@ def run_bellhop(executable: Path,
         A Pandas Series containing source parameters.
     station : pd.Series
         A Pandas Series containing station parameters.
-    dist : np.array
-        A NumPy array representing distances along the propagation path.
-    zb : list
-        A list containing bathymetric depth values along the path.
+    bty : tuple[list[float], np.ndarray[float], np.ndarray[float]]
+        A tuple containing:
+        - zb : list containing the bathymetric depth values along the transect,
+        - dist : NumPy array representing distances along the propagation path,
+        - z_transect : NumPy array representing the 32 vertical depth (z) coordinates
+        of the propagation path.
     sound_speed : np.array
         A NumPy array containing the sound speed profile at different depths.
-    z_transect : np.array
-        A NumPy array representing the vertical depth (z) coordinates
-        of the propagation path.
     param_seabed : pd.Series
         A Pandas Series containing seabed parameters.
     croco_data : serie
@@ -362,6 +359,7 @@ def run_bellhop(executable: Path,
             the rays emitted (arrival delay, amplitude...)
 
     """
+    zb, dist, z_transect = bty
     # Compute central frequency of the sound source
     f_cen = int((source["f_min"] + source["f_max"]) / 2)
     a = station.distance
@@ -375,6 +373,8 @@ def run_bellhop(executable: Path,
     if isinstance(calc, str):
         calc = [calc]
 
+    executable = roots[0]
+    bellhop_dir = roots[1]
     env_data = []
     # Iterate over calculation types (e.g., incoherent, coherent, etc.)
     for c in calc:
