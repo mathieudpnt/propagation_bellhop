@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from reader_utils import (
     check_empty_file,
-    f_exist,
+    check_file_exist,
     check_suffix,
     read_dim,
 )
@@ -14,7 +14,7 @@ from reader_utils import (
 def test_invalid_arr_path() -> None:
     invalid_path = Path(r"wrong_path\that_does\not_exist.arr")
     with pytest.raises(FileNotFoundError):
-        f_exist(invalid_path)
+        check_file_exist(invalid_path)
 
 
 def test_invalid_arr_suffix(tmp_path: Path) -> None:

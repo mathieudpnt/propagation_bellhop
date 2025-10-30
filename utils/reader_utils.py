@@ -6,8 +6,8 @@ import numpy as np
 from numpy import ndarray
 
 
-def f_exist(file: Path) -> None:
-    """Check if the path to the file exists."""
+def check_file_exist(file: Path) -> None:
+    """Check if the file exists."""
     if not file.exists():
         msg = f"{file} does not exist"
         raise FileNotFoundError(msg)
@@ -42,7 +42,7 @@ def read_env(file: Path) -> (list, dict):
         The contents of the environmental file.
 
     """
-    f_exist(file)
+    check_file_exist(file)
     check_suffix(file, ".env")
     check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
@@ -140,7 +140,7 @@ def read_arr(file: Path) -> list:
         The contents of the .arr file.
 
     """
-    f_exist(file)
+    check_file_exist(file)
     check_suffix(file, ".arr")
     check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
@@ -221,7 +221,7 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
         The contents of the ray file.
 
     """
-    f_exist(file)
+    check_file_exist(file)
     check_suffix(file, ".ray")
     check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
