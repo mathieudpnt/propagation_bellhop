@@ -6,7 +6,7 @@ import numpy as np
 from core_utils import (
     check_empty_file,
     check_file_exist,
-    check_len_line,
+    check_elem_num,
     check_len_list,
     check_suffix,
 )
@@ -260,14 +260,14 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
 
 def read_head_bty(header: tuple) -> None:
     """Read the header of bathymetric file."""
-    if not all(check_len_line(x, 2) for x in header):
+    if not all(check_elem_num(x, 2) for x in header):
         msg = "Wrong header in bathymetric file"
         raise ValueError(msg)
 
 
 def read_env_param(line: str, nb: int) -> list[float]:
     """Read the environment parameters."""
-    if not (check_len_line(line, nb)):
+    if not (check_elem_num(line, nb)):
         msg = "Invalid environmental characteristics line"
         raise ValueError(msg)
     return line.split(" ")
@@ -313,7 +313,7 @@ def read_prof(d_prof: list[float]) -> list[float]:
 
 def read_bot_prop(line: str, nb: int, zmax: float) -> list[float]:
     """Read bottom properties."""
-    if not (check_len_line(line, nb)):
+    if not (check_elem_num(line, nb)):
         msg = "Invalid len bot_prop line"
         raise ValueError(msg)
     if float(line.split(" ", maxsplit=1)[0]) != zmax:
