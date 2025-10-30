@@ -1,25 +1,16 @@
-"""Created on Tue Jun  6 07:45:28 2023.
 
-- [R,Teta] = Coef_Rb(Para_1,Para_2,Fr)  / reflexion fond (fluide-fluide)
-- R = Coef_Rbot2(Teta,Para_1,Para_2,Fr) / reflexion fond (fluide-fluide)
-- r = Coef_Surf(t, v, f)        / reflexion surf (Beckmann)
-- Atv = Atten_FG(f,s,t,z,ph)    / attenuation de Francois&Garrison
-- La1,Lo1 = Proj(La0,Lo0,R0,Tet0) / calcul de P1 (La1,Lo1)
-    situé à R0,Tet0, de P0 (Lo0,La0)
-
-@author: xdemoulin
-"""
 from __future__ import annotations
 
 import math
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pandas import Series
 
 if TYPE_CHECKING:
     import _io
     from pathlib import Path
+
+    from pandas import Series
 
 
 def depth_to_pressure(z: float, lat: float) -> float:
@@ -30,7 +21,7 @@ def depth_to_pressure(z: float, lat: float) -> float:
     z : float
         depth (m) to convert
     lat : float
-        lattitude of the point of depth z
+        latitude of the point of depth z
 
     Returns
     -------
@@ -49,8 +40,13 @@ def depth_to_pressure(z: float, lat: float) -> float:
     return hz * kz * 1000
 
 
-def compute_sound_speed(salinity: float, temperature: float, depth: float,
-                        equation: str, lat: float) -> float:
+def compute_sound_speed(
+        salinity: float,
+        temperature: float,
+        depth: float,
+        equation: str,
+        lat: float,
+) -> float:
     """Compute the speed of sound in seawater using different empirical equations.
 
     Parameters
@@ -265,7 +261,7 @@ def bottom_reflection_coefficient(
     Returns
     -------
     float
-        Reflection coefficient for a fluid–fluid interface.
+        Reflection coefficient for a fluid-fluid interface.
 
     """
     w = 2 * np.pi * freq  # Angular frequency
@@ -317,9 +313,9 @@ def surface_reflection_coefficient(
     """
     # Empirical term from Beckmann equation
     term = np.exp(
-        -0.0381 * theta**2 / (3 + 2.6 * wind_speed)
+        -0.0381 * theta**2 / (3 + 2.6 * wind_speed),
     ) / np.sqrt(
-        5 * np.pi / (3 + 2.6 * wind_speed)
+        5 * np.pi / (3 + 2.6 * wind_speed),
     )
 
     # Correction factor
