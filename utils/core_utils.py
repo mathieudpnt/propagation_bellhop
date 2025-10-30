@@ -425,7 +425,7 @@ def check_empty_file(file: Path) -> None:
 
 
 def check_len_line(line: str, nb: int) -> bool:
-    """Check length of a string."""
+    """Check number of element in a string."""
     line = line.split(" ")
     return len(line) == nb
 
