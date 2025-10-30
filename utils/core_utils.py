@@ -94,8 +94,7 @@ def compute_sound_speed(salinity: float, temperature: float, depth: float,
             msg = "`lat` must be provided."
             raise ValueError(msg)
 
-        p = depth_to_pressure(depth, lat) * 0.010197162129779  # convertion
-        # from dBar to kg.cm-2
+        p = depth_to_pressure(depth, lat) * 0.010197162129779  # from dBar to kg.cm-2
 
         # Coefficients
         c000 = 1402.392
