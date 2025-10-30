@@ -1,16 +1,4 @@
-#!/usr/bin/env python3
 
-"""Created on Tue Jun  6 07:45:28 2023.
-
-- [R,Teta] = Coef_Rb(Para_1,Para_2,Fr)  / reflexion fond (fluide-fluide)
-- R = Coef_Rbot2(Teta,Para_1,Para_2,Fr) / reflexion fond (fluide-fluide)
-- r = Coef_Surf(t, v, f)        / reflexion surf (Beckmann)
-- Atv = Atten_FG(f,s,t,z,ph)    / attenuation de Francois&Garrison
-- La1,Lo1 = Proj(La0,Lo0,R0,Tet0) / calcul de P1 (La1,Lo1)
-    situé à R0,Tet0, de P0 (Lo0,La0)
-
-@author: xdemoulin
-"""
 from __future__ import annotations
 
 import math
@@ -20,6 +8,9 @@ import numpy as np
 
 if TYPE_CHECKING:
     import _io
+    from pathlib import Path
+
+    from pandas import Series
 
 
 def depth_to_pressure(z: float, lat: float) -> float:
@@ -30,7 +21,7 @@ def depth_to_pressure(z: float, lat: float) -> float:
     z : float
         depth (m) to convert
     lat : float
-        lattitude of the point of depth z
+        latitude of the point of depth z
 
     Returns
     -------
@@ -49,8 +40,13 @@ def depth_to_pressure(z: float, lat: float) -> float:
     return hz * kz * 1000
 
 
-def compute_sound_speed(salinity: float, temperature: float, depth: float,
-                        equation: str, lat: float) -> float:
+def compute_sound_speed(
+        salinity: float,
+        temperature: float,
+        depth: float,
+        equation: str,
+        lat: float,
+) -> float:
     """Compute the speed of sound in seawater using different empirical equations.
 
     Parameters
@@ -95,8 +91,7 @@ def compute_sound_speed(salinity: float, temperature: float, depth: float,
             msg = "`lat` must be provided."
             raise ValueError(msg)
 
-        p = depth_to_pressure(depth, lat) * 0.010197162129779  # convertion
-        # from dBar to kg.cm-2
+        p = depth_to_pressure(depth, lat) * 0.010197162129779  # from dBar to kg.cm-2
 
         # Coefficients
         c000 = 1402.392
@@ -227,7 +222,7 @@ def compute_sound_speed(salinity: float, temperature: float, depth: float,
     raise ValueError(error)
 
 
-def find_nearest(array: np.array, value: float) -> float:
+def find_nearest(array: np.ndarray, value: float) -> int:
     """Find index where array is closest to value.
 
     Parameters
@@ -239,81 +234,100 @@ def find_nearest(array: np.array, value: float) -> float:
 
     """
     array = np.asarray(array)
-    return (np.abs(array - value)).argmin()
+    return int(np.abs(array - value).argmin())
 
 
-def ref_coeff_bot(teta: float, para_1: list[float, float, float], para_2: list[float,
-                    float, float], freq: float) -> float:
-    """"Calculate the reflectcion coefficient at the bottom.
+def bottom_reflection_coefficient(
+    theta: float,
+    para_1: Series,
+    para_2: Series,
+    freq: float,
+) -> float:
+    """Calculate the reflection coefficient at the bottom.
 
-    The interface is considered fluid-fluid at the bottom of the environment
+    The interface is considered fluid-fluid at the bottom of the environment.
 
     Parameters
     ----------
-    teta : float
-        Angle d'incidence de l'onde par rapport à la normale
-    para_1 : list[float, float, float]
-        List of the parameters of the seabed (C1, rho1, At1)
-    para_2 : list[float, float, float]
-        List of parameters (C2, rho2, At2)
+    theta : float
+        Angle of incidence of the wave with respect to the normal (degrees).
+    para_1 : Series
+        Parameters of the water [sound_speed, density, attenuation].
+    para_2 : Series
+        Parameters of the seabed [sound_speed, density, attenuation].
     freq : float
-        Frequency (Hz)
+        Frequency in Hz.
 
     Returns
     -------
-    float : Reflection coefficient for a fluid-fluid interface
+    float
+        Reflection coefficient for a fluid-fluid interface.
 
     """
-    c1 = para_1[0]  # soundspeed in the water
-    rho1 = para_1[1]  # density of the water
-    at1 = para_1[2]  # attenuation of the sound in the water (dB/lambda)
+    w = 2 * np.pi * freq  # Angular frequency
 
-    c2 = para_2.iloc[0]  # soundspeed in seabed
-    rho2 = para_2.iloc[1]  # density of seabed
-    at2 = para_2.iloc[2]  # attenuation of the sound in seabed (dB/lambda)
+    # Attenuation conversions to Np/m
+    atp1 = (para_1[2] * freq) / (8.686 * para_1[0])
+    atp2 = (para_2[2] * freq) / (8.686 * para_2[0])
 
-    w = 2 * np.pi * freq  # omega
-    atp1 = (at1 * freq) / (8.686 * c1)  # attenuation conversion to Np
-    c1b = ((w**2 / c1) - 1j * atp1 * w) / ((w / c1)**2 + atp1**2)  # complex sound speed
+    # Complex sound speeds
+    c1b = ((w**2 / para_1[0]) - 1j * atp1 * w) / ((w / para_1[0])**2 + atp1**2)
+    c2b = ((w**2 / para_2[0]) - 1j * atp2 * w) / ((w / para_2[0])**2 + atp2**2)
 
-    atp2 = (at2 * freq) / (8.686 * c2)  # attenuation conversion to Np
-    c2b = ((w**2 / c2) - 1j * atp2 * w) / ((w / c2)**2 + atp2**2)  # complex sound speed
-
-    sint1 = np.sin(np.pi / 180 * teta)
-    cost1 = np.cos(np.pi / 180 * teta)
+    # Transmission angle in the seabed (Snell's law)
+    sint1 = np.sin(np.deg2rad(theta))
+    cost1 = np.cos(np.deg2rad(theta))
     sint2 = np.sqrt(1 - (c2b * cost1 / c1b)**2)
-    # Calculation of the transmission angle in the ground (Snell's law)
 
-    z1 = rho1 * c1b / sint1  # acoustic impedance calculation
-    z2 = (rho2 * c2b) / sint2  # acoustic impedance calculation
+    # Acoustic impedance
+    z1 = para_1[1] * c1b / sint1
+    z2 = para_2[1] * c2b / sint2
 
+    # Reflection coefficient
     return (z2 - z1) / (z2 + z1)
 
 
-def ref_coeff_surf(teta: float, wind_speed: float, freq: float) -> float:
+def surface_reflection_coefficient(
+    theta: float,
+    wind_speed: float,
+    freq: float,
+) -> float:
     """Calculate the surface reflection coefficient.
 
-    Calculations based on Beckmann equation
+    The calculation is based on the Beckmann equation.
 
     Parameters
     ----------
-    teta : float
-        Angle in degree
+    theta : float
+        Angle of incidence in degrees.
     wind_speed : float
-        wWind speed in knots
+        Wind speed in knots.
     freq : float
-        Frequency in kHz
+        Frequency in kHz.
 
     Returns
     -------
-        Reflection coefficient
+    float
+        Reflection coefficient at the sea surface.
 
     """
-    term = np.exp(-0.0381 * teta ** 2 / (3 + 2.6 * wind_speed)) / np.sqrt(5 *
-                                                        np.pi / (3 + 2.6 * wind_speed))
-    k = np.minimum(0.707, (np.sin(np.pi / 180 * teta) + 0.1 * term))
-    return ((0.3 + (0.7 / (1 + (0.0182 * wind_speed ** 2 * freq / 40) ** 2)))
-            * np.sqrt(1 - k))
+    # Empirical term from Beckmann equation
+    term = np.exp(
+        -0.0381 * theta**2 / (3 + 2.6 * wind_speed),
+    ) / np.sqrt(
+        5 * np.pi / (3 + 2.6 * wind_speed),
+    )
+
+    # Correction factor
+    k = np.minimum(
+        0.707,
+        np.sin(np.deg2rad(theta)) + 0.1 * term,
+    )
+
+    # Reflection coefficient
+    return (
+        0.3 + (0.7 / (1 + (0.0182 * wind_speed**2 * freq / 40) ** 2))
+    ) * np.sqrt(1 - k)
 
 
 def atten_fg(f: float, s: float, t: float, z: float, ph: float) -> float:
@@ -385,13 +399,13 @@ def find_pow2(x: float) -> int:
 
 
 def readline_1(fid: _io.TextIOWrapper, nb: int) -> float:
-    """Read the nbth element of a line."""
+    """Read element nb of a line."""
     return float(fid.readline().split()[nb])
 
 
-def zeros(size: int, flag: int) -> np.array:
+def zeros(size: int, flag: int) -> np.ndarray:
     """Create an array of zeros, could be real (0) or complex (1)."""
-    if flag == 1:  # if complexe
+    if flag == 1:  # if complex
         return np.zeros(size) + 1j * np.zeros(size)
     return np.zeros(size)
 
@@ -399,3 +413,36 @@ def zeros(size: int, flag: int) -> np.array:
 def date_to_number(m: int, d: int) -> int:
     """Convert date to number in the year."""
     return (m - 1) * 30 + d
+
+
+def check_file_exist(file: Path) -> None:
+    """Check if the file exists."""
+    if not file.exists():
+        msg = f"{file} does not exist"
+        raise FileNotFoundError(msg)
+
+
+def check_suffix(file: Path, suffix: str) -> None:
+    """Check if the suffix of the file is the one expected."""
+    if file.suffix != suffix:
+        msg = f"{file} is not a {suffix} file"
+        raise ValueError(msg)
+
+
+def check_empty_file(file: Path) -> None:
+    """Check if the file is empty."""
+    content = file.read_text(encoding="utf-8")
+    if not content:
+        msg = f"{file} is empty"
+        raise ValueError(msg)
+
+
+def check_elem_num(line: str, nb: int) -> bool:
+    """Check number of element in a string."""
+    line = line.split(" ")
+    return len(line) == nb
+
+
+def check_len_list(list_: list, nb: int) -> bool:
+    """Check if length of a list."""
+    return len(list_) == nb

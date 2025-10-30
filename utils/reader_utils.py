@@ -3,29 +3,14 @@ import itertools
 from pathlib import Path
 
 import numpy as np
+from core_utils import (
+    check_empty_file,
+    check_file_exist,
+    check_elem_num,
+    check_len_list,
+    check_suffix,
+)
 from numpy import ndarray
-
-
-def f_exist(file: Path) -> None:
-    """Check if the path to the file exists."""
-    if not file.exists():
-        msg = f"{file} does not exist"
-        raise FileNotFoundError(msg)
-
-
-def invalid_suffix(file: Path, suffix: str) -> None:
-    """Check if the suffix of the file is the one expected."""
-    if file.suffix != suffix:
-        msg = f"{file} is not a {suffix} file"
-        raise ValueError(msg)
-
-
-def f_empty(file: Path) -> list[str]:
-    """Check if the file is empty."""
-    content = file.read_text(encoding="utf-8").splitlines()
-    if not content:
-        msg = f"{file} is empty"
-        raise ValueError(msg)
 
 
 def read_env(file: Path) -> (list, dict):
@@ -42,9 +27,9 @@ def read_env(file: Path) -> (list, dict):
         The contents of the environmental file.
 
     """
-    f_exist(file)
-    invalid_suffix(file, ".env")
-    f_empty(file)
+    check_file_exist(file)
+    check_suffix(file, ".env")
+    check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
     title = content[0]
@@ -140,9 +125,9 @@ def read_arr(file: Path) -> list:
         The contents of the .arr file.
 
     """
-    f_exist(file)
-    invalid_suffix(file, ".arr")
-    f_empty(file)
+    check_file_exist(file)
+    check_suffix(file, ".arr")
+    check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
     dimension = content[0].strip()
@@ -221,9 +206,9 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
         The contents of the ray file.
 
     """
-    f_exist(file)
-    invalid_suffix(file, ".ray")
-    f_empty(file)
+    check_file_exist(file)
+    check_suffix(file, ".ray")
+    check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
     title = content[0]
@@ -275,25 +260,14 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
 
 def read_head_bty(header: tuple) -> None:
     """Read the header of bathymetric file."""
-    if not all(check_len_line(x, 2) for x in header):
+    if not all(check_elem_num(x, 2) for x in header):
         msg = "Wrong header in bathymetric file"
         raise ValueError(msg)
 
 
-def check_len_line(line: str, nb: int) -> bool:
-    """Check that the lenght of a line is the one expected."""
-    line = line.split(" ")
-    return len(line) == nb
-
-
-def check_len_list(list_: list, nb: int) -> bool:
-    """Check that the lenght of a list is the one expected."""
-    return len(list_) == nb
-
-
 def read_env_param(line: str, nb: int) -> list[float]:
     """Read the environment parameters."""
-    if not (check_len_line(line, nb)):
+    if not (check_elem_num(line, nb)):
         msg = "Invalid environmental characteristics line"
         raise ValueError(msg)
     return line.split(" ")
@@ -339,7 +313,7 @@ def read_prof(d_prof: list[float]) -> list[float]:
 
 def read_bot_prop(line: str, nb: int, zmax: float) -> list[float]:
     """Read bottom properties."""
-    if not (check_len_line(line, nb)):
+    if not (check_elem_num(line, nb)):
         msg = "Invalid len bot_prop line"
         raise ValueError(msg)
     if float(line.split(" ", maxsplit=1)[0]) != zmax:

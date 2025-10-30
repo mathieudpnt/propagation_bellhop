@@ -14,6 +14,8 @@ import numpy as np
 from netCDF4 import Dataset
 from numpy import dtype, float64, floating, ndarray
 from numpy.fft import fft, ifft
+from pandas import Series
+
 from reader_utils import read_env
 from scipy.signal import chirp
 
@@ -22,10 +24,11 @@ from utils.core_utils import (
     compute_sound_speed,
     find_nearest,
     find_pow2,
-    ref_coeff_bot,
-    ref_coeff_surf,
+    bottom_reflection_coefficient,
+    surface_reflection_coefficient,
 )
-from utils.reader_utils import f_empty, f_exist, invalid_suffix, read_head_bty
+from utils.reader_utils import read_head_bty
+from core_utils import check_file_exist, check_suffix, check_empty_file
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:
@@ -121,9 +124,9 @@ def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarra
         A 2D array of the bathymetric elevation data for the extracted region.
 
     """
-    f_exist(file)
-    invalid_suffix(file, ".asc")
-    f_empty(file)
+    check_file_exist(file)
+    check_suffix(file, ".asc")
+    check_empty_file(file)
 
     # header infos
     with Path.open(file) as f:
@@ -414,7 +417,7 @@ def run_bellhop(executable: Path,
 
 
 def impulse_response(file: Path, source: dict[str, float], station: dict[str, float],
-                     param_water: dict[str, float], param_seabed: dict[str, float],
+                     param_water: dict[str, float], param_seabed: Series,
                      param_env: float) -> tuple[np.ndarray[np.float64], np.ndarray[
                      np.complex128], np.ndarray[np.float64], np.ndarray[np.float64],
                      np.ndarray[np.complex128]]:
@@ -434,8 +437,8 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
         Dictionary containing information about the receivers (stations)
     param_water : dict
         Dictionary containing information about water parameters
-    param_seabed : dict
-        Dictionary containing seabed parameters
+    param_seabed : Series
+        Series containing seabed parameters
     param_env : float
         Wind speed
 
@@ -517,12 +520,29 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
     if ponder == 1:
         se[n1:n2] = np.hamming(n_win - 1) * se[n1:n2]
 
-        # construction of the frequencial response
+    # frequency response
     for ni in np.arange(n1, n2 + 1):
         inc += 1  # noqa: SIM113
         fk = freq[ni] / 1000
-        rs = -ref_coeff_surf(tet, w, fk)  # surface reflexion
-        rb = ref_coeff_bot(tet, [1500, 1, 0], param_seabed, freq[ni])  # bottom reflexio
+        rs = -surface_reflection_coefficient(tet, w, fk)  # surface reflexion
+
+        param_seawater = Series({
+            "bulk_soundspeed": 1500,  # m/s
+            "bulk_density": 1,  # kg/m3
+            "attenuation": 0,  # dB/m
+        })
+
+        # bottom reflexion
+        rb = [
+            bottom_reflection_coefficient(
+                theta,
+                param_seawater,
+                param_seabed,
+                freq[ni],
+            )
+            for theta in tet
+        ]
+
         atv = atten_fg(fk, salinity, temperature, 10, ph) * dis / 1000  # attenuation dB
         atten = np.exp(-atv * np.log(10) / 20)  # attenuation (Np)
         y[ni, :] = (se[ni] * atten * (rs**ns) * (rb**nb) *
