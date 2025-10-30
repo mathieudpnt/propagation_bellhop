@@ -25,7 +25,7 @@ from utils.core_utils import (
     find_nearest,
     find_pow2,
     bottom_reflection_coefficient,
-    ref_coeff_surf,
+    surface_reflection_coefficient,
 )
 from utils.reader_utils import read_head_bty
 from core_utils import check_file_exist, check_suffix, check_empty_file
@@ -524,7 +524,7 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
     for ni in np.arange(n1, n2 + 1):
         inc += 1  # noqa: SIM113
         fk = freq[ni] / 1000
-        rs = -ref_coeff_surf(tet, w, fk)  # surface reflexion
+        rs = -surface_reflection_coefficient(tet, w, fk)  # surface reflexion
 
         param_seawater = Series({
             "bulk_soundspeed": 1500,  # m/s

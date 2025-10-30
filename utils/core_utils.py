@@ -291,30 +291,47 @@ def bottom_reflection_coefficient(
     return (z2 - z1) / (z2 + z1)
 
 
-def ref_coeff_surf(teta: float, wind_speed: float, freq: float) -> float:
+def surface_reflection_coefficient(
+    theta: float,
+    wind_speed: float,
+    freq: float,
+) -> float:
     """Calculate the surface reflection coefficient.
 
-    Calculations based on Beckmann equation
+    The calculation is based on the Beckmann equation.
 
     Parameters
     ----------
-    teta : float
-        Angle in degree
+    theta : float
+        Angle of incidence in degrees.
     wind_speed : float
-        wWind speed in knots
+        Wind speed in knots.
     freq : float
-        Frequency in kHz
+        Frequency in kHz.
 
     Returns
     -------
-        Reflection coefficient
+    float
+        Reflection coefficient at the sea surface.
 
     """
-    term = np.exp(-0.0381 * teta ** 2 / (3 + 2.6 * wind_speed)) / np.sqrt(5 *
-                                                        np.pi / (3 + 2.6 * wind_speed))
-    k = np.minimum(0.707, (np.sin(np.pi / 180 * teta) + 0.1 * term))
-    return ((0.3 + (0.7 / (1 + (0.0182 * wind_speed ** 2 * freq / 40) ** 2)))
-            * np.sqrt(1 - k))
+    # Empirical term from Beckmann equation
+    term = np.exp(
+        -0.0381 * theta**2 / (3 + 2.6 * wind_speed)
+    ) / np.sqrt(
+        5 * np.pi / (3 + 2.6 * wind_speed)
+    )
+
+    # Correction factor
+    k = np.minimum(
+        0.707,
+        np.sin(np.deg2rad(theta)) + 0.1 * term,
+    )
+
+    # Reflection coefficient
+    return (
+        0.3 + (0.7 / (1 + (0.0182 * wind_speed**2 * freq / 40) ** 2))
+    ) * np.sqrt(1 - k)
 
 
 def atten_fg(f: float, s: float, t: float, z: float, ph: float) -> float:
