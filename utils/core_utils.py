@@ -407,9 +407,9 @@ def readline_1(fid: _io.TextIOWrapper, nb: int) -> float:
     return float(fid.readline().split()[nb])
 
 
-def zeros(size: int, flag: int) -> np.array:
+def zeros(size: int, flag: int) -> np.ndarray:
     """Create an array of zeros, could be real (0) or complex (1)."""
-    if flag == 1:  # if complexe
+    if flag == 1:  # if complex
         return np.zeros(size) + 1j * np.zeros(size)
     return np.zeros(size)
 
