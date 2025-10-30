@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from reader_utils import (
-    f_empty,
+    check_empty_file,
     f_exist,
     invalid_suffix,
     read_angle,
@@ -36,7 +36,7 @@ def test_empty_env(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty_file.env"
     empty_file.touch()
     with pytest.raises(ValueError, match="is empty"):
-        f_empty(empty_file)
+        check_empty_file(empty_file)
 
 
 @pytest.mark.parametrize(

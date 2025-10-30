@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.reader_utils import f_exist, invalid_suffix, f_empty
+from utils.reader_utils import f_exist, invalid_suffix, check_empty_file
 
 
 def test_invalid_bty_path() -> None:
@@ -24,4 +24,4 @@ def test_empty_bty(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty_file.bty"
     empty_file.touch()
     with pytest.raises(ValueError, match="is empty"):
-        f_empty(empty_file)
+        check_empty_file(empty_file)

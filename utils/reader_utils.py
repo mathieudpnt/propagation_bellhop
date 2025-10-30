@@ -20,9 +20,9 @@ def invalid_suffix(file: Path, suffix: str) -> None:
         raise ValueError(msg)
 
 
-def f_empty(file: Path) -> list[str]:
+def check_empty_file(file: Path) -> None:
     """Check if the file is empty."""
-    content = file.read_text(encoding="utf-8").splitlines()
+    content = file.read_text(encoding="utf-8")
     if not content:
         msg = f"{file} is empty"
         raise ValueError(msg)
@@ -44,7 +44,7 @@ def read_env(file: Path) -> (list, dict):
     """
     f_exist(file)
     invalid_suffix(file, ".env")
-    f_empty(file)
+    check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
     title = content[0]
@@ -142,7 +142,7 @@ def read_arr(file: Path) -> list:
     """
     f_exist(file)
     invalid_suffix(file, ".arr")
-    f_empty(file)
+    check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
     dimension = content[0].strip()
@@ -223,7 +223,7 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
     """
     f_exist(file)
     invalid_suffix(file, ".ray")
-    f_empty(file)
+    check_empty_file(file)
     content = file.read_text(encoding="utf-8").splitlines()
 
     title = content[0]
