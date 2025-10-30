@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
+import pandas as pd
 from core_utils import check_empty_file, check_file_exist, check_suffix
 from netCDF4 import Dataset
 from numpy import dtype, float64, floating, ndarray
@@ -23,9 +24,9 @@ from scipy.signal import chirp
 from utils.core_utils import (
     atten_fg,
     compute_sound_speed,
+    bottom_reflection_coefficient,
     find_nearest,
     find_pow2,
-    bottom_reflection_coefficient,
     surface_reflection_coefficient,
 )
 from utils.reader_utils import read_head_bty
@@ -158,7 +159,7 @@ def extract_bty(source: pd.Series,
                 station: pd.Series,
                 lat: np.ndarray,
                 lon: np.ndarray,
-                elev: np.ndarray
+                elev: np.ndarray,
                 ) -> tuple[list[float], np.ndarray[float], np.ndarray[float]]:
     """Extract bathymetric depth along a transect between a source and a station.
 
@@ -411,9 +412,13 @@ def run_bellhop(executable: Path,
     return env_data
 
 
-def impulse_response(file: Path, source: dict[str, float], station: dict[str, float],
-                     param_water: dict[str, float], param_seabed: Series,
-                     param_env: float) -> tuple[np.ndarray[np.float64], np.ndarray[
+def impulse_response(file: Path,
+                     source: dict[str, float],
+                     station: dict[str, float],
+                     param_water: dict[str, float],
+                     param_seabed: Series,
+                     param_env: float,
+                     ) -> tuple[np.ndarray[np.float64], np.ndarray[
                      np.complex128], np.ndarray[np.float64], np.ndarray[np.float64],
                      np.ndarray[np.complex128]]:
     """Reconstruct the received signal.
