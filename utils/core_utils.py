@@ -425,11 +425,11 @@ def check_empty_file(file: Path) -> None:
 
 
 def check_len_line(line: str, nb: int) -> bool:
-    """Check that the length of a line is the one expected."""
+    """Check length of a string."""
     line = line.split(" ")
     return len(line) == nb
 
 
 def check_len_list(list_: list, nb: int) -> bool:
-    """Check that the length of a list is the one expected."""
+    """Check if length of a list."""
     return len(list_) == nb
