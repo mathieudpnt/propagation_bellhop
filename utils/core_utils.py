@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Created on Tue Jun  6 07:45:28 2023.
 
 - [R,Teta] = Coef_Rb(Para_1,Para_2,Fr)  / reflexion fond (fluide-fluide)
@@ -14,13 +12,13 @@
 from __future__ import annotations
 
 import math
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 if TYPE_CHECKING:
     import _io
+    from pathlib import Path
 
 
 def depth_to_pressure(z: float, lat: float) -> float:
