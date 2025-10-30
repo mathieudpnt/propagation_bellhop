@@ -361,10 +361,7 @@ def run_bellhop(executable: Path,
 
     """
     zb, dist, z_transect = bty
-    # Compute central frequency of the sound source
-    f_cen = int((source["f_min"] + source["f_max"]) / 2)
-    a = station.distance
-    # Define the number of bathymetry points (ensuring at least 15 points)
+    a = station.distance  # Define the number of bathymetry points (min 15)
     nb_p = max(15, int(10 * a))  # Sampling at 100m intervals
 
     # Compute the number of rays based on distance (one ray per 25 meters)
@@ -382,7 +379,6 @@ def run_bellhop(executable: Path,
         # Generate Bellhop environment file
         envfil = write_env_file(bellhop_dir,
             f"{filename}{c}",
-            f_cen,
             source,
             station,
             sound_speed,

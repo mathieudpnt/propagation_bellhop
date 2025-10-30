@@ -19,7 +19,6 @@ from utils.core_utils import depth_to_pressure, find_nearest
 
 def write_env_file(root: Path,
                    env_name: str,
-                   f_cen: float,
                    source: pd.Series,
                    station: pd.Series,
                    sound_speed: np.array(Any),
@@ -37,8 +36,6 @@ def write_env_file(root: Path,
         Directory where the environment file will be saved.
     env_name : str
         Name of the environment file (without extension).
-    f_cen : float
-        Central frequency of the simulation (Hz).
     source : serie
         Source information (lat, lon, depth, type).
     station : serie
@@ -76,6 +73,7 @@ def write_env_file(root: Path,
 
     """
     # Create/Open the environment file
+    f_cen = int((source["f_min"] + source["f_max"]) / 2)  # Central frequency (Hz)
     file = Path(root / Path(f"{env_name}.env"))
     with Path.open(file, "w") as fid:
         # Write file header
