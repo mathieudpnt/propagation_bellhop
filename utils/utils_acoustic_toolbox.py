@@ -26,7 +26,9 @@ def write_env_file(root: Path,
                    nb_ray: int,
                    zmax: float,
                    param_seabed: pd.Series(),
-                   calc: str, croco_data: pd.Series(), param_water: pd.Series(),
+                   calc: str,
+                   croco_data: pd.Series(),
+                   param_water: pd.Series(),
                    yday: int) -> (float, float):
     """Generate an environment file (.env) for Bellhop acoustic propagation modeling.
 

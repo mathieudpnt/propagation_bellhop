@@ -12,30 +12,29 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 import pandas as pd
-from core_utils import check_empty_file, check_file_exist, check_suffix
 from netCDF4 import Dataset
-from numpy import dtype, float64, floating, ndarray
+from numpy import ndarray
 from numpy.fft import fft, ifft
 from pandas import Series
-
 from reader_utils import read_env
 from scipy.signal import chirp
 
 from utils.core_utils import (
     atten_fg,
-    compute_sound_speed,
     bottom_reflection_coefficient,
+    check_empty_file,
+    check_file_exist,
+    check_suffix,
+    compute_sound_speed,
     find_nearest,
     find_pow2,
     surface_reflection_coefficient,
 )
 from utils.reader_utils import read_head_bty
-from core_utils import check_file_exist, check_suffix, check_empty_file
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:
     from collections import namedtuple
-    from collections.abc import Iterable
 
     import pandas as pd
 
@@ -217,7 +216,7 @@ def extract_bty(source: pd.Series,
         zb.append(abs(elev[nearest_lat, nearest_lon]))
 
     # generates a distance vector from the source and receptor with nb_p points
-    dist = np.linspace(0, station["distance"], nb_p)
+    dist = np.linspace(start=0, stop=station["distance"], num=nb_p)
 
     z_max = max(zb) - (max(zb) % 5)  # maximum depth with a 5-meter resolution
     z_transect = np.linspace(0, z_max, 32)  # for compatibility with CROCO
@@ -286,8 +285,7 @@ def sound_speed_profile(method: str, yday: int, z: np.array, ref_coord: tuple
             for sal, temp, z_i in zip(salinity, temperature, z, strict=False)]
 
 
-def run_bellhop(executable: Path,
-                bellhop_dir: Path,
+def run_bellhop(roots: list[Path],
                 filename: str,
                 calc: str | list[str],
                 z_max: float,
@@ -516,27 +514,26 @@ def impulse_response(file: Path,
     if ponder == 1:
         se[n1:n2] = np.hamming(n_win - 1) * se[n1:n2]
 
+    param_seawater = Series({
+        "bulk_soundspeed": 1500,  # m/s
+        "bulk_density": 1,  # kg/m3
+        "attenuation": 0,  # dB/m
+    })
+
     # frequency response
     for ni in np.arange(n1, n2 + 1):
         inc += 1  # noqa: SIM113
         fk = freq[ni] / 1000
         rs = -surface_reflection_coefficient(tet, w, fk)  # surface reflexion
 
-        param_seawater = Series({
-            "bulk_soundspeed": 1500,  # m/s
-            "bulk_density": 1,  # kg/m3
-            "attenuation": 0,  # dB/m
-        })
-
         # bottom reflexion
         rb = [
             bottom_reflection_coefficient(
-                theta,
+                tet,
                 param_seawater,
                 param_seabed,
                 freq[ni],
-            )
-            for theta in tet
+            ),
         ]
 
         atv = atten_fg(fk, salinity, temperature, 10, ph) * dis / 1000  # attenuation dB
