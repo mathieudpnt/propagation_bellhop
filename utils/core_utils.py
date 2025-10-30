@@ -15,6 +15,7 @@ import math
 from typing import TYPE_CHECKING
 
 import numpy as np
+from pandas import Series
 
 if TYPE_CHECKING:
     import _io
@@ -240,51 +241,53 @@ def find_nearest(array: np.ndarray, value: float) -> int:
     return int(np.abs(array - value).argmin())
 
 
-def ref_coeff_bot(teta: float, para_1: list[float, float, float], para_2: list[float,
-                    float, float], freq: float) -> float:
-    """"Calculate the reflectcion coefficient at the bottom.
+def bottom_reflection_coefficient(
+    theta: float,
+    para_1: Series,
+    para_2: Series,
+    freq: float,
+) -> float:
+    """Calculate the reflection coefficient at the bottom.
 
-    The interface is considered fluid-fluid at the bottom of the environment
+    The interface is considered fluid-fluid at the bottom of the environment.
 
     Parameters
     ----------
-    teta : float
-        Angle d'incidence de l'onde par rapport à la normale
-    para_1 : list[float, float, float]
-        List of the parameters of the seabed (C1, rho1, At1)
-    para_2 : list[float, float, float]
-        List of parameters (C2, rho2, At2)
+    theta : float
+        Angle of incidence of the wave with respect to the normal (degrees).
+    para_1 : Series
+        Parameters of the water [sound_speed, density, attenuation].
+    para_2 : Series
+        Parameters of the seabed [sound_speed, density, attenuation].
     freq : float
-        Frequency (Hz)
+        Frequency in Hz.
 
     Returns
     -------
-    float : Reflection coefficient for a fluid-fluid interface
+    float
+        Reflection coefficient for a fluid–fluid interface.
 
     """
-    c1 = para_1[0]  # soundspeed in the water
-    rho1 = para_1[1]  # density of the water
-    at1 = para_1[2]  # attenuation of the sound in the water (dB/lambda)
+    w = 2 * np.pi * freq  # Angular frequency
 
-    c2 = para_2.iloc[0]  # soundspeed in seabed
-    rho2 = para_2.iloc[1]  # density of seabed
-    at2 = para_2.iloc[2]  # attenuation of the sound in seabed (dB/lambda)
+    # Attenuation conversions to Np/m
+    atp1 = (para_1[2] * freq) / (8.686 * para_1[0])
+    atp2 = (para_2[2] * freq) / (8.686 * para_2[0])
 
-    w = 2 * np.pi * freq  # omega
-    atp1 = (at1 * freq) / (8.686 * c1)  # attenuation conversion to Np
-    c1b = ((w**2 / c1) - 1j * atp1 * w) / ((w / c1)**2 + atp1**2)  # complex sound speed
+    # Complex sound speeds
+    c1b = ((w**2 / para_1[0]) - 1j * atp1 * w) / ((w / para_1[0])**2 + atp1**2)
+    c2b = ((w**2 / para_2[0]) - 1j * atp2 * w) / ((w / para_2[0])**2 + atp2**2)
 
-    atp2 = (at2 * freq) / (8.686 * c2)  # attenuation conversion to Np
-    c2b = ((w**2 / c2) - 1j * atp2 * w) / ((w / c2)**2 + atp2**2)  # complex sound speed
-
-    sint1 = np.sin(np.pi / 180 * teta)
-    cost1 = np.cos(np.pi / 180 * teta)
+    # Transmission angle in the seabed (Snell's law)
+    sint1 = np.sin(np.deg2rad(theta))
+    cost1 = np.cos(np.deg2rad(theta))
     sint2 = np.sqrt(1 - (c2b * cost1 / c1b)**2)
-    # Calculation of the transmission angle in the ground (Snell's law)
 
-    z1 = rho1 * c1b / sint1  # acoustic impedance calculation
-    z2 = (rho2 * c2b) / sint2  # acoustic impedance calculation
+    # Acoustic impedance
+    z1 = para_1[1] * c1b / sint1
+    z2 = para_2[1] * c2b / sint2
 
+    # Reflection coefficient
     return (z2 - z1) / (z2 + z1)
 
 
