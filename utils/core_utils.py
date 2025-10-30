@@ -225,7 +225,7 @@ def compute_sound_speed(salinity: float, temperature: float, depth: float,
     raise ValueError(error)
 
 
-def find_nearest(array: np.array, value: float) -> float:
+def find_nearest(array: np.ndarray, value: float) -> int:
     """Find index where array is closest to value.
 
     Parameters
@@ -237,7 +237,7 @@ def find_nearest(array: np.array, value: float) -> float:
 
     """
     array = np.asarray(array)
-    return (np.abs(array - value)).argmin()
+    return int(np.abs(array - value).argmin())
 
 
 def ref_coeff_bot(teta: float, para_1: list[float, float, float], para_2: list[float,
