@@ -403,7 +403,7 @@ def find_pow2(x: float) -> int:
 
 
 def readline_1(fid: _io.TextIOWrapper, nb: int) -> float:
-    """Read the nbth element of a line."""
+    """Read element nb of a line."""
     return float(fid.readline().split()[nb])
 
 
