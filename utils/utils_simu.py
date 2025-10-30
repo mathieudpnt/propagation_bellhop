@@ -25,7 +25,8 @@ from utils.core_utils import (
     ref_coeff_bot,
     ref_coeff_surf,
 )
-from utils.reader_utils import check_empty_file, check_file_exist, check_suffix, read_head_bty
+from utils.reader_utils import read_head_bty
+from core_utils import check_file_exist, check_suffix, check_empty_file
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:

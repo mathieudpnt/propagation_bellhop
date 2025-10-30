@@ -4,13 +4,11 @@ from pathlib import Path
 import pytest
 from numpy import ndarray
 from reader_utils import (
-    check_empty_file,
-    check_file_exist,
-    check_suffix,
     read_coord_type,
     read_depth,
     read_r,
 )
+from core_utils import check_file_exist, check_suffix, check_empty_file
 
 
 def test_invalid_ray_path() -> None:

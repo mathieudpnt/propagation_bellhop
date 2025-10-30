@@ -4,11 +4,9 @@ from pathlib import Path
 
 import pytest
 from reader_utils import (
-    check_empty_file,
-    check_file_exist,
-    check_suffix,
     read_dim,
 )
+from core_utils import check_file_exist, check_suffix, check_empty_file
 
 
 def test_invalid_arr_path() -> None:

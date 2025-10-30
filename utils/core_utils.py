@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -399,3 +400,36 @@ def zeros(size: int, flag: int) -> np.array:
 def date_to_number(m: int, d: int) -> int:
     """Convert date to number in the year."""
     return (m - 1) * 30 + d
+
+
+def check_file_exist(file: Path) -> None:
+    """Check if the file exists."""
+    if not file.exists():
+        msg = f"{file} does not exist"
+        raise FileNotFoundError(msg)
+
+
+def check_suffix(file: Path, suffix: str) -> None:
+    """Check if the suffix of the file is the one expected."""
+    if file.suffix != suffix:
+        msg = f"{file} is not a {suffix} file"
+        raise ValueError(msg)
+
+
+def check_empty_file(file: Path) -> None:
+    """Check if the file is empty."""
+    content = file.read_text(encoding="utf-8")
+    if not content:
+        msg = f"{file} is empty"
+        raise ValueError(msg)
+
+
+def check_len_line(line: str, nb: int) -> bool:
+    """Check that the lenght of a line is the one expected."""
+    line = line.split(" ")
+    return len(line) == nb
+
+
+def check_len_list(list_: list, nb: int) -> bool:
+    """Check that the lenght of a list is the one expected."""
+    return len(list_) == nb

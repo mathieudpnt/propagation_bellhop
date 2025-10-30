@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.reader_utils import check_file_exist, check_suffix, check_empty_file
+from core_utils import check_file_exist, check_suffix, check_empty_file
 
 
 def test_invalid_bty_path() -> None:

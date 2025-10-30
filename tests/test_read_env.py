@@ -4,9 +4,6 @@ from pathlib import Path
 
 import pytest
 from reader_utils import (
-    check_empty_file,
-    check_file_exist,
-    check_suffix,
     read_angle,
     read_bot_prop,
     read_depth,
@@ -16,6 +13,7 @@ from reader_utils import (
     read_run_type,
     read_z,
 )
+from core_utils import check_file_exist, check_suffix, check_empty_file
 
 
 def test_invalid_env_path() -> None:
