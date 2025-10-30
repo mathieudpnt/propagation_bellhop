@@ -26,7 +26,6 @@ def f_empty(file: Path) -> list[str]:
     if not content:
         msg = f"{file} is empty"
         raise ValueError(msg)
-    return content
 
 
 def read_env(file: Path) -> (list, dict):
@@ -45,7 +44,8 @@ def read_env(file: Path) -> (list, dict):
     """
     f_exist(file)
     invalid_suffix(file, ".env")
-    content = f_empty(file)
+    f_empty(file)
+    content = file.read_text(encoding="utf-8").splitlines()
 
     title = content[0]
     frequency = int(content[1])
@@ -142,7 +142,8 @@ def read_arr(file: Path) -> list:
     """
     f_exist(file)
     invalid_suffix(file, ".arr")
-    content = f_empty(file)
+    f_empty(file)
+    content = file.read_text(encoding="utf-8").splitlines()
 
     dimension = content[0].strip()
     dim = read_dim(dimension, 4)
@@ -222,7 +223,8 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
     """
     f_exist(file)
     invalid_suffix(file, ".ray")
-    content = f_empty(file)
+    f_empty(file)
+    content = file.read_text(encoding="utf-8").splitlines()
 
     title = content[0]
     frequency = float(content[1])
