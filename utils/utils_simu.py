@@ -153,12 +153,12 @@ def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarra
     return lat_extract, lon_extract, data_extract
 
 
-def extract_bty(source: pd.Series, station: pd.Series, lat: np.ndarray,
-                lon: np.ndarray, elev: np.ndarray) -> tuple[list[ndarray[Any,
-                dtype[floating[Any]]]], ndarray[tuple[Any, ...], dtype[float64]]
-                | ndarray[tuple[Any, ...], dtype[floating]] | ndarray[tuple[Any, ...],
-                dtype[np.complexfloating]] | ndarray[tuple[Any, ...], dtype[Any]],
-                ndarray[tuple[Any, ...], dtype[float64]], int]:
+def extract_bty(source: pd.Series,
+                station: pd.Series,
+                lat: np.ndarray,
+                lon: np.ndarray,
+                elev: np.ndarray
+                ) -> tuple[list[float], np.ndarray[float], np.ndarray[float]]:
     """Extract bathymetric depth along a transect between a source and a station.
 
     This function samples bathymetric elevation along a straight-line transect
@@ -193,8 +193,6 @@ def extract_bty(source: pd.Series, station: pd.Series, lat: np.ndarray,
         A 1D NumPy array of 32 depth levels (for compatibility with CROCO),
         adjusted to the maximum bathymetric depth
         (rounded down to the nearest multiple of 5 meters).
-    nb_layer : int
-        The number of horizontal layers along the transect, assuming a 25-meter spacing.
 
     Notes
     -----
@@ -217,15 +215,12 @@ def extract_bty(source: pd.Series, station: pd.Series, lat: np.ndarray,
         zb.append(abs(elev[nearest_lat, nearest_lon]))
 
     # generates a distance vector from the source and receptor with nb_p points
-    dist = np.linspace(start=0, stop=station["distance"], num=nb_p)
+    dist = np.linspace(0, station["distance"], nb_p)
 
     z_max = max(zb) - (max(zb) % 5)  # maximum depth with a 5-meter resolution
     z_transect = np.linspace(0, z_max, 32)  # for compatibility with CROCO
 
-    # number of horizontal layers, assuming a 25-meter spacing
-    nb_layer = int((station["distance"] * 1000) // 25)
-
-    return zb, dist, z_transect, nb_layer
+    return zb, dist, z_transect
 
 
 def sound_speed_profile(method: str, yday: int, z: np.array, ref_coord: tuple
@@ -437,7 +432,7 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
         Dictionary containing information about the receivers (stations)
     param_water : dict
         Dictionary containing information about water parameters
-    param_seabed : Series
+    param_seabed : Series.
         Series containing seabed parameters
     param_env : float
         Wind speed
