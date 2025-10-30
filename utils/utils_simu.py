@@ -123,7 +123,8 @@ def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarra
     """
     f_exist(file)
     invalid_suffix(file, ".asc")
-    content = f_empty(file)
+    f_empty(file)
+
     # header infos
     with Path.open(file) as f:
         header = [next(f).strip() for _ in range(6)]
