@@ -115,8 +115,12 @@ def write_env_file(root: Path,
 
         # Seabed properties
         fid.write("A* 0.0\n")  # Bottom condition
-        fid.write(f"{zmax} {param_seabed['bulk_soundspeed']} 0.0 {param_seabed
-        ['bulk_density']} {param_seabed['attenuation']} 0.0 /\n")  # Bottom properties
+        fid.write(f"{zmax} \
+        {param_seabed['bulk_soundspeed']} \
+        0.0 \
+        {param_seabed['bulk_density']} \
+        {param_seabed['attenuation']} \
+        0.0 /\n")  # Bottom properties
 
         # Source depth
         fid.write("1\n")
@@ -260,7 +264,8 @@ def read_shd(filename: Path) -> ndarray[float]:
                 "f": freq,
                 "thetas": thetas,
                 "rarray": rarray,
-                "zarray": zarray}
+                "zarray": zarray
+    }
 
     return pressure, geometry
 

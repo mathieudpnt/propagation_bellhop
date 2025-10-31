@@ -33,31 +33,6 @@ def test_empty_ray(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("top", "bottom", "expected"),
-    [
-        pytest.param(
-            "0.0", "250",
-            nullcontext((0.0, 250)),
-            id="Valide depth",
-        ),
-        pytest.param(
-            "0.0", "-250",
-            pytest.raises(ValueError, match="Invalid depth line"),
-            id="Depth must be positive",
-        ),
-        pytest.param(
-            "250", "0.0",
-            pytest.raises(ValueError, match="Invalid depth line"),
-            id="Depth must be increasing",
-        ),
-    ],
-)
-def test_read_depth(top: float, bottom: float, expected: tuple) -> None:
-    with expected as e:
-        assert read_depth(top, bottom) == e
-
-
-@pytest.mark.parametrize(
     ("line", "expected"),
     [
         pytest.param(

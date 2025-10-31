@@ -5,12 +5,12 @@ from pathlib import Path
 import pytest
 from reader_utils import (
     read_angle,
-    read_bot_prop,
+    read_bottom_properties,
     read_depth,
     read_env_param,
-    read_md,
-    read_prof,
-    read_run_type,
+    check_media,
+    check_soundspeed_profile,
+    check_run_type,
     read_z,
 )
 from core_utils import check_file_exist, check_suffix, check_empty_file
@@ -41,77 +41,84 @@ def test_empty_env(tmp_path: Path) -> None:
     ("line", "nb", "expected"),
     [
         pytest.param(
-            "1 2 a bc /",
-            5,
-            nullcontext(["1", "2", "a", "bc", "/"]),
-            id="Valid number of values",
+            "1 2 3 /",
+            4,
+            nullcontext([1, 2, 3]),
+            id="valid entry",
         ),
         pytest.param(
-            "2 abc /",
+            "1 2 3 4 /",
             2,
             pytest.raises(ValueError,
                           match="Invalid environmental characteristics line"),
-            id="Too many values",
+            id="too many values",
         ),
         pytest.param(
-            "-1 /",
+            "1 2 /",
             3,
             pytest.raises(ValueError,
                           match="Invalid environmental characteristics line"),
-            id="Not enought medias",
+            id="not enough values",
         ),
     ],
 )
 def test_env_param(line: str, nb: int, expected: list[str]) -> None:
     with expected as e:
-        assert read_env_param(line, nb) == e
+        assert read_env_param(line) == e
 
 
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
-        pytest.param("1", nullcontext(1), id="Valid media line : 1"),
-        pytest.param(
-            "2",
-            pytest.raises(ValueError, match="Invalid media line: 2"),
-            id="Too many medias",
+        pytest.param(1,
+                     nullcontext(),
+                     id="valid entry"
         ),
         pytest.param(
-            "-1",
-            pytest.raises(ValueError, match="Invalid media line: -1"),
-            id="Not enought medias",
+            2,
+            pytest.raises(ValueError, match="Invalid media line: 2"),
+            id="too many medias",
+        ),
+        pytest.param(
+            0,
+            pytest.raises(ValueError, match="Invalid media line: 0"),
+            id="not enough medias",
         ),
     ],
 )
-def test_nb_md(line: str, expected: int) -> None:
+def test_nb_md(line: int, expected: int) -> None:
     with expected as e:
-        assert read_md(line) == e
+        assert check_media(line) == e
 
 
 @pytest.mark.parametrize(
-    ("a", "b", "expected"),
+    ("line", "expected"),
     [
-        pytest.param("0.0", "250.0", nullcontext((0.0, 250.0)), id="Valid depth line"),
         pytest.param(
-            "-15.0", "250.0",
-            pytest.raises(ValueError, match="Invalid depth line"),
-            id="zmin should be positive",
+            "0 0.0 250",
+            nullcontext((0, 250)),
+            id="valid entry"
         ),
         pytest.param(
-            "250.0", "0.0",
+            "0 -15.0 250.0",
             pytest.raises(ValueError, match="Invalid depth line"),
-            id="zmin should be smaller than zmax",
+            id="negative z_min",
         ),
         pytest.param(
-            "0.0", "0.0",
+            "0 250.0 0.0",
             pytest.raises(ValueError, match="Invalid depth line"),
-            id="zmin should be different than zmax",
+            id="z_min > z_max",
+        ),
+        pytest.param(
+            "0 0.0 0.0",
+            pytest.raises(ValueError, match="Invalid depth line"),
+            id="z_min = z_max",
         ),
     ],
 )
-def test_depth(a: str, b: str, expected: tuple[float, float]) -> None:
+def test_depth(line: str, expected: tuple[float, float]) -> None:
     with expected as e:
-        assert read_depth(a, b) == e
+        assert read_depth(line) == e
 
 
 @pytest.mark.parametrize(
@@ -123,12 +130,7 @@ def test_depth(a: str, b: str, expected: tuple[float, float]) -> None:
         ),
         pytest.param(
             "0.0", 10.0,
-            pytest.raises(ValueError, match="z0 must be equal to zmin"),
-            id="z0 must be equal to zmin",
-        ),
-        pytest.param(
-            "50.0", 0.0,
-            pytest.raises(ValueError, match="z0 must be equal to zmin"),
+            pytest.raises(ValueError, match=r"depth must be >= to z_min=10.0"),
             id="z0 must be equal to zmin",
         ),
     ],
@@ -141,84 +143,93 @@ def test_z(z0: str, zmin: float, expected: float) -> None:
 @pytest.mark.parametrize(
     ("d_prof", "expected"),
     [
-        pytest.param([1, 2, 3, 4], nullcontext([1, 2, 3, 4]), id="Valid depth profil "),
+        pytest.param([1, 2, 3, 4], nullcontext(), id="valid depth profile"),
         pytest.param(
             [6, 3, 2, 0],
             pytest.raises(ValueError, match="Depth should be increasing"),
-            id="decreasing depth profil line",
+            id="decreasing depth profile line",
         ),
         pytest.param(
             [5, 5, 5, 5],
             pytest.raises(ValueError, match="Depth should be increasing"),
-            id="stable depth profil line",
+            id="stable depth profile line",
         ),
         pytest.param(
             [1, 4, 3, 9],
             pytest.raises(ValueError, match="Depth should be increasing"),
-            id="unstable depth profil line"),
+            id="unstable depth profile line"),
     ],
 )
-def test_read_prof(d_prof: list[float, float, float, float],
-                   expected: list[float]) -> None:
+
+
+def test_read_prof(d_prof: tuple[float, float, float, float],
+                   expected: list[float],
+) -> None:
     with expected as e:
-        assert read_prof(d_prof) == e
+        assert check_soundspeed_profile(d_prof) == e
 
 
 @pytest.mark.parametrize(
-    ("line", "nb", "zmax", "expected"),
+    ("line", "z_max", "expected"),
     [
         pytest.param(
             "250 1600.0 0.0 1.75 1.05 0.0 /",
-            7,
             250,
-            nullcontext(["250", "1600.0", "0.0", "1.75", "1.05", "0.0"]),
-            id="Valid bot_prop line",
+            nullcontext([250, 1600.0, 0.0, 1.75, 1.05, 0.0]),
+            id="valid entry",
         ),
         pytest.param(
-            "250 1600.0 0.0 1.75 1.05", 7, 250,
-            pytest.raises(ValueError, match="Invalid len bot_prop line"),
-            id="Bottom parameter value missing",
+            "250 1600.0 0.0 /", 250,
+            pytest.raises(ValueError, match="Bottom properties line: wrong number of element"),
+            id="too few parameters",
         ),
         pytest.param(
-                "250 1600.0 0.0 1.75 1.05 0.0 / /", 7, 250,
-                pytest.raises(ValueError, match="Invalid len bot_prop line"),
-                id="Too many botom parameters",
+                "250 1600.0 0.0 1.75 1.05 0.0 abc 789 /", 250,
+                pytest.raises(
+                    ValueError,
+                    match="Bottom properties line: wrong number of element",
+                ),
+                id="too many parameters",
         ),
         pytest.param(
-            "100 1600.0 0.0 1.75 1.05 0.0 /", 7, 250,
-            pytest.raises(ValueError, match="Invalid bot_prop line"),
-            id="Depth must be zmax",
+            "100 1600.0 0.0 1.75 1.05 0.0 /", 250,
+            pytest.raises(ValueError, match="Bottom properties line: wrong z_max"),
+            id="Depth must be z_max",
         ),
     ],
 )
-def test_read_bot_prop(line: str, nb: int, zmax: float, expected: list[float]) -> None:
+def test_read_bot_prop(line: str, z_max: float, expected: list[float]) -> None:
     with expected as e:
-        assert read_bot_prop(line, nb, zmax) == e
+        assert read_bottom_properties(line, z_max) == e
 
 
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
-        pytest.param("E", nullcontext("E"), id="Valid run type"),
+        pytest.param(
+            "E",
+            nullcontext(),
+            id="valid entry"
+        ),
         pytest.param(
             "M",
             pytest.raises(ValueError, match="Incorrect run type"),
-            id="Incorrect run type",
+            id="unknown run type 1",
         ),
         pytest.param(
             "EA",
             pytest.raises(ValueError, match="Incorrect run type"),
-            id="Incorrect run type",
+            id="unknown run type 2",
         ),
         pytest.param(
             "5",
             pytest.raises(ValueError, match="Incorrect run type"),
-            id="Incorrect run type"),
+            id="unknown run type 3"),
     ],
 )
 def test_read_run_type(line: str, expected: str) -> None:
     with expected as e:
-        assert read_run_type(line) == e
+        assert check_run_type(line) == e
 
 
 @pytest.mark.parametrize(
