@@ -1,12 +1,12 @@
-
+"""Read files."""
 import itertools
 from pathlib import Path
 
 import numpy as np
 from core_utils import (
+    check_elem_num,
     check_empty_file,
     check_file_exist,
-    check_elem_num,
     check_len_list,
     check_suffix,
 )
