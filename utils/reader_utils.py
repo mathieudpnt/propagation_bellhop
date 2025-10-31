@@ -221,7 +221,7 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
     top_d, bottom_d = read_depth(top_depth, bottom_depth)
 
     coord_type = content[6]
-    read_coord_type(coord_type)
+    read_coord_type(content[6])
 
     ra = []
     za = []
@@ -267,10 +267,11 @@ def read_head_bty(header: tuple) -> None:
 def read_env_param(line: str) -> list[float]:
     """Read the environment parameters."""
     nb_param = 4
+    line = line.strip("/ ")
     if not (check_elem_num(line, nb_param)):
         msg = "Invalid environmental characteristics line"
         raise ValueError(msg)
-    return [float(elem) for elem in line.strip("/ ").split()]
+    return [float(elem) for elem in line.split()]
 
 
 def check_media(number_media: int) -> None:
