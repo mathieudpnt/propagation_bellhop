@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def depth_to_pressure(z: float, lat: float) -> float:
-    """Convert depth (m) to pressure (kPa) (Leroy & Parthiot, 1998).
+    """Calculate pressure (MPa) at a certain depth (m) (Leroy & Parthiot, 1998).
 
     Parameters
     ----------

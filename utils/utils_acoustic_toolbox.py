@@ -74,8 +74,19 @@ def write_env_file(root: Path,
     - Supports different calculation modes (incoherent, eigenray, arrivals).
 
     """
-    # Create/Open the environment file
     f_cen = int((source["f_min"] + source["f_max"]) / 2)  # Central frequency (Hz)
+
+    # geting the index of croco data nearest to source and environment data
+    lat_ix = find_nearest(croco_data.lat[:, 0], source["lat"])
+    lon_ix = find_nearest(croco_data.lon[0, :], source["lon"])
+    depth_ix = find_nearest(croco_data.depth[:, 0, 0], -source["depth"])
+    salinity = round(croco_data.salinity[yday, depth_ix, lat_ix, lon_ix], 1)
+    temperature = round(croco_data.temperature[yday, depth_ix, lat_ix, lon_ix], 1)
+
+    ph = param_water["pH"]
+    depth_bar = depth_to_pressure(source["depth"], source["lat"])
+
+    # Create/Open the environment file
     file = Path(root / Path(f"{env_name}.env"))
     with Path.open(file, "w") as fid:
         # Write file header
@@ -83,21 +94,6 @@ def write_env_file(root: Path,
         fid.write(f"{f_cen}\n")  # Central frequency
         fid.write("1\n")  # Number of layers (single layer for water column)
         fid.write("'CVWF'\n")  # See file: ./acoustic_toolbox/doc/EnvironmentalFile.html
-        lat_ix = find_nearest(croco_data.lat[:, 0], source["lat"])
-        # Index of the closest latitude in the CROCO grid
-
-        lon_ix = find_nearest(croco_data.lon[0, :], source["lon"])
-        # Index of the closest longitude in the CROCO grid
-
-        depth_ix = find_nearest(croco_data.depth[:, 0, 0], -source["depth"])
-        salinity = round(croco_data.salinity[yday, depth_ix, lat_ix, lon_ix], 1)
-        # Salinity profile
-
-        temperature = round(croco_data.temperature[yday, depth_ix, lat_ix, lon_ix], 1)
-        # Temperature profile
-
-        ph = param_water["pH"]
-        depth_bar = depth_to_pressure(source["depth"], source["lat"])
         fid.write(f"{temperature} {salinity} {ph} {depth_bar}\n")
         # Temperature, Salinity, pH, pressure at a certain depth
 
@@ -115,8 +111,11 @@ def write_env_file(root: Path,
 
         # Seabed properties
         fid.write("A* 0.0\n")  # Bottom condition
-        fid.write(f"{zmax} {param_seabed['bulk_soundspeed']} 0.0 {param_seabed
-        ['bulk_density']} {param_seabed['attenuation']} 0.0 /\n")  # Bottom properties
+        fid.write(f"{zmax} "
+                  f"{param_seabed['bulk_soundspeed']} "
+                  f"0.0 {param_seabed['bulk_density']} "
+                  f"{param_seabed['attenuation']} "
+                  f"0.0 /\n")  # Bottom properties
 
         # Source depth
         fid.write("1\n")

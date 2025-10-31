@@ -350,7 +350,7 @@ def run_bellhop(roots: list[Path],
     - This function does not return anything but generates output files
     from the Bellhop model.
     - Generates output files :
-        'I' option : generates a .shd file, containing the pressure field.
+        'I' option : generates a .shd file, containing the incoherent pressure field.
            The data is extracted to calculate and plot the transmission loss diagram
         'E' option : generates a .ray file, containing the information about eigenrays
            (rays that connect the source and the receiver).
