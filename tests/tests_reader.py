@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -5,17 +7,17 @@ import pytest
 from core_utils import check_empty_file, check_file_exist, check_suffix
 from numpy import ndarray
 from reader_utils import (
-    check_media,
-    check_run_type,
     check_soundspeed_profile,
     read_angle,
     read_bottom_properties,
     read_coord_type,
-    read_depth,
-    read_dim,
+    read_depth_line,
+    read_dimension,
     read_env_param,
+    read_media,
     read_r,
-    read_z,
+    read_run_type,
+    read_profile_depth_value,
 )
 
 
@@ -70,13 +72,16 @@ def test_empty_file(tmp_path: Path) -> None:
     [
         pytest.param(
             "1 2 3 4",
-            nullcontext([1, 2, 3, 4]),
+            nullcontext((1, 2, 3, 4)),
             id="valid entry",
         ),
         pytest.param(
             "1 2 3 4 /",
-            nullcontext([1, 2, 3, 4]),
-            id="another valid entry",
+            pytest.raises(
+                ValueError,
+                match="Invalid environmental characteristics line"
+            ),
+            id="backslash",
         ),
         pytest.param(
             "1 2 3 4 5",
@@ -104,24 +109,34 @@ def test_read_environmental_line(line: str, expected: str) -> None:
     [
         pytest.param(
             1,
-            nullcontext(),
+            nullcontext(1),
             id="valid entry"
         ),
         pytest.param(
+            "1",
+            nullcontext(1),
+            id="valid entry str",
+        ),
+        pytest.param(
             2,
-            pytest.raises(ValueError, match="Invalid media line: 2"),
+            pytest.raises(ValueError, match="Wrong media number"),
             id="too many medias",
         ),
         pytest.param(
             0,
-            pytest.raises(ValueError, match="Invalid media line: 0"),
+            pytest.raises(ValueError, match="Wrong media number"),
             id="not enough medias",
+        ),
+        pytest.param(
+            "abc",
+            pytest.raises(ValueError, match="Wrong media format"),
+            id="wrong format",
         ),
     ],
 )
-def test_read_media_line(line: int, expected: int) -> None:
+def test_read_media_line(line: int | str, expected: int) -> None:
     with expected as e:
-        assert check_media(line) == e
+        assert read_media(line) == e
 
 
 @pytest.mark.parametrize(
@@ -151,7 +166,7 @@ def test_read_media_line(line: int, expected: int) -> None:
 )
 def test_read_depth_line(line: str, expected: tuple[float, float]) -> None:
     with expected as e:
-        assert read_depth(line) == e
+        assert read_depth_line(line) == e
 
 
 @pytest.mark.parametrize(
@@ -190,13 +205,13 @@ def test_check_soundspeed_profile(
     ("line", "z_max", "expected"),
     [
         pytest.param(
-            "250 1600.0 0.0 1.75 1.05 0.0 /",
+            "250 1600.0 0.0 1.75 1.05 0.0",
             250,
             nullcontext([250, 1600.0, 0.0, 1.75, 1.05, 0.0]),
             id="valid entry",
         ),
         pytest.param(
-            "250 1600.0 0.0 /",
+            "250 1600.0 0.0",
             250,
             pytest.raises(
                 ValueError,
@@ -205,7 +220,7 @@ def test_check_soundspeed_profile(
             id="too few parameters",
         ),
         pytest.param(
-            "250 1600.0 0.0 1.75 1.05 0.0 abc 789 /",
+            "250 1600.0 0.0 1.75 1.05 0.0 abc 789",
             250,
             pytest.raises(
                 ValueError,
@@ -214,7 +229,7 @@ def test_check_soundspeed_profile(
             id="too many parameters",
         ),
         pytest.param(
-            "100 1600.0 0.0 1.75 1.05 0.0 /", 250,
+            "100 1600.0 0.0 1.75 1.05 0.0", 250,
             pytest.raises(
                 ValueError,
                 match="Bottom properties line: wrong z_max"
@@ -233,7 +248,7 @@ def test_read_bot_prop(line: str, z_max: float, expected: list[float]) -> None:
     [
         pytest.param(
             "E",
-            nullcontext(),
+            nullcontext("E"),
             id="valid entry"
         ),
         pytest.param(
@@ -254,7 +269,7 @@ def test_read_bot_prop(line: str, z_max: float, expected: list[float]) -> None:
 )
 def test_read_run_type(line: str, expected: str) -> None:
     with expected as e:
-        assert check_run_type(line) == e
+        assert read_run_type(line) == e
 
 
 @pytest.mark.parametrize(
@@ -296,12 +311,12 @@ def test_read_angle(line: str, expected: tuple[float, float]) -> None:
     ("line", "expected"),
     [
         pytest.param(
-            "'rz'",
-            nullcontext("'rz'"),
+            "rz",
+            nullcontext("rz"),
             id="valid depth",
         ),
         pytest.param(
-            "'r'",
+            "r",
             pytest.raises(ValueError, match="Invalid coordinate type"),
             id="coordinate type must be 'rz'",
         ),
@@ -356,28 +371,25 @@ def test_read_r(r: ndarray, rmax: float, nsteps: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("line", "nb", "expected"),
+    ("line", "expected"),
     [
         pytest.param(
-            "'2D'",
-            4,
-            nullcontext("2D"),
-            id="Valide dimension",
+            "2D",
+            nullcontext(2),
+            id="valid entry",
         ),
             pytest.param(
-            "'2D a'",
-            4,
-            pytest.raises(ValueError, match="Invalid len of dimension line: '2D a'"),
-            id="Invalid len of dimension line",
+            "2D a",
+            pytest.raises(ValueError, match="Invalid dimension line"),
+            id="invalid len of dimension line",
         ),
         pytest.param(
-            "'3D'",
-            4,
-            pytest.raises(ValueError, match="Invalid dimension line: 3D"),
-            id="Dimension should be 2D",
+            "3D",
+            pytest.raises(ValueError, match="Invalid dimension number: 3"),
+            id="dimension too high",
         ),
     ],
 )
-def test_read_dim(line: str, nb: int, expected: list[str]) -> None:
+def test_read_dim(line: str, expected: list[str]) -> None:
     with expected as e:
-        assert read_dim(line, nb) == e
+        assert read_dimension(line) == e

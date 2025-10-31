@@ -1,4 +1,6 @@
 """Read files."""
+from __future__ import annotations
+
 import itertools
 from pathlib import Path
 
@@ -11,6 +13,33 @@ from core_utils import (
     check_suffix,
 )
 from numpy import ndarray
+
+
+def read_bellhop_file(file: Path) -> list[str]:
+    """Read a Bellhop file.
+
+    Read .env/.arr/.bty files produced by Bellhop.
+
+    Parameters
+    ----------
+    file : Path
+        Path to the file.
+
+    Returns
+    -------
+    content : list[str]
+        The content of the environmental file.
+
+    """
+    if file.suffix not in {".env", ".arr", ".bty", ".ray"}:
+        msg = f"{file} is not a Bellhop file."
+        raise ValueError(msg)
+    check_file_exist(file)
+    check_empty_file(file)
+    return [
+        elem.strip(" /").strip("'")
+        for elem in file.read_text(encoding="utf-8").splitlines()
+    ]
 
 
 def read_env(file: Path) -> dict:
@@ -27,72 +56,51 @@ def read_env(file: Path) -> dict:
         The contents of the environmental file.
 
     """
-    check_file_exist(file)
     check_suffix(file, ".env")
-    check_empty_file(file)
-    content = file.read_text(encoding="utf-8").splitlines()
+    content = read_bellhop_file(file)
 
-    title = content[0].strip("'\"")
+    title = content[0]
     frequency = int(content[1])
+    number_media = read_media(content[2])
+    env_opt = content[3]
+    temperature, salinity, ph, pressure = read_env_param(content[4])
+    z_min, z_max = read_depth_line(content[5])
 
-    number_media = int(content[2])
-    check_media(number_media)
+    depth_profile, sound_speed_profile, idx = read_profile(content)
 
-    env_opt = content[3].strip("'\"")
+    bottom_cond = content[idx + 1]
+    bottom_prop = read_bottom_properties(content[idx + 2], z_max)
 
-    env_param = read_env_param(content[4])
-
-    z_min, z_max = read_depth(content[5])
-
-    i = 6
-    depth_profile, sound_speed_profile = [], []
-    while read_z(content[i], z_min) < z_max:
-        depth_profile.append(read_z(content[i], z_min))
-        sound_speed_profile.append(read_soundspeed(content[i]))
-        i += 1
-
-    if read_z(content[i], z_min) != z_max:
-        msg = "Wrong last depth value"
-        raise ValueError(msg)
-    depth_profile.append(read_z(content[i], z_min))
-    sound_speed_profile.append(read_soundspeed(content[i]))
-
-    check_soundspeed_profile(depth_profile)
-
-    bottom_cond = content[i + 1]
-    bottom_prop = read_bottom_properties(content[i + 2], z_max)
-
-    nb_src = int(content[i + 3])
-    src_z = float(content[i + 4].strip(" /"))
-    nb_rcv_z = int(content[i + 5])
+    nb_src = int(content[idx + 3])
+    src_z = float(content[idx + 4])
+    nb_rcv_z = int(content[idx + 5])
 
     if nb_rcv_z == 1:
-        rcv_z = float(content[i + 6].strip(" /"))
+        rcv_z = float(content[idx + 6])
     else:
-        rcv_z = tuple(float(elem) for elem in content[i + 6].strip(" /").split())
+        rcv_z = tuple(float(elem) for elem in content[idx + 6].split())
 
-    nb_rcv_r = int(content[i + 7])
+    nb_rcv_r = int(content[idx + 7])
 
     if nb_rcv_z == 1:
-        rcv_r = float(content[i + 8].strip(" /"))
+        rcv_r = float(content[idx + 8])
     else:
-        rcv_r = tuple(float(elem) for elem in content[i + 8].strip(" /").split())
+        rcv_r = tuple(float(elem) for elem in content[idx + 8].split())
 
-    run_type = content[i + 9]
-    check_run_type(run_type)
-
-    nb_beam = int(content[i + 10])
-
-    angle_inf, angle_sup = read_angle(content[i + 11])
-
-    info = content[i + 12]
+    run_type = read_run_type(content[idx + 9])
+    nb_beam = int(content[idx + 10])
+    angle_inf, angle_sup = read_angle(content[idx + 11])
+    info = content[idx + 12]
 
     return {
         "title": title,
         "frequency": frequency,
         "number_media": number_media,
         "env_opt": env_opt,
-        "env_param": env_param,
+        "temperature": temperature,
+        "salinity": salinity,
+        "ph": ph,
+        "pressure": pressure,
         "depth_profile": depth_profile,
         "sound_speed_profile": sound_speed_profile,
         "bottom_condition": bottom_cond,
@@ -110,7 +118,7 @@ def read_env(file: Path) -> dict:
     }
 
 
-def read_arr(file: Path) -> list:
+def read_arr(file: Path) -> dict:
     """Check the arrival file created by bellhop.
 
     Parameters
@@ -124,20 +132,15 @@ def read_arr(file: Path) -> list:
         The contents of the .arr file.
 
     """
-    check_file_exist(file)
     check_suffix(file, ".arr")
-    check_empty_file(file)
-    content = file.read_text(encoding="utf-8").splitlines()
+    content = read_bellhop_file(file)
 
-    dimension = content[0].strip()
-    dim = read_dim(dimension, 4)
+    dim = read_dimension(content[0])
     frequency = float(content[1])
-
-    nb_src, src_z = content[2].split()
-    nb_rcv_z, rcv_z = content[3].split()
-    nb_rcv_r, rcv_r = content[4].split()
-
-    narr = int(content[5])
+    nb_src, src_z = read_nb_depth_range(content[2])
+    nb_rcv_z, rcv_z = read_nb_depth_range(content[3])
+    nb_rcv_r, rcv_r = read_nb_depth_range(content[4])
+    narr = read_nb_ray(content[5])
 
     i = 7
     amp = []
@@ -161,12 +164,20 @@ def read_arr(file: Path) -> list:
         nb_bot_bnc.append(int(line[7]))
         i += 1
 
-    for x in (amp, phase, delay_re, delay_im, src_ang, rcv_ang, nb_top_bnc, nb_bot_bnc):
-        if len(x) != narr:
-            msg = "Lenght issue"
-            raise ValueError(msg)
+    if not all(len(arr) == narr for arr in (
+            amp,
+            phase,
+            delay_re,
+            delay_im,
+            src_ang,
+            rcv_ang,
+            nb_top_bnc,
+            nb_bot_bnc
+    )):
+        msg = "Inconsistent length"
+        raise ValueError(msg)
 
-    arr_data = {
+    return {
         "dim": dim,
         "frequency": frequency,
         "nb_src": nb_src,
@@ -186,17 +197,15 @@ def read_arr(file: Path) -> list:
         "nb_bot_bnc": nb_bot_bnc,
     }
 
-    return content, arr_data
 
-
-def read_ray(file: Path, rmax: float) -> (list, dict):
+def read_ray(file: Path, r_max: float) -> dict:
     """Check the ray file created by bellhop.
 
     Parameters
     ----------
     file : Path
         Path to the ray file.
-    rmax : float
+    r_max : float
         Distance between the source and the receiver.
 
     Returns
@@ -205,56 +214,94 @@ def read_ray(file: Path, rmax: float) -> (list, dict):
         The contents of the ray file.
 
     """
-    check_file_exist(file)
     check_suffix(file, ".ray")
-    check_empty_file(file)
-    content = file.read_text(encoding="utf-8").splitlines()
+    content = read_bellhop_file(file)
 
     title = content[0]
     frequency = float(content[1])
-
     nb_coord = content[2]
     nb_beam = content[3]
-
-    top_depth = content[4]
-    bottom_depth = content[5]
-    top_d, bottom_d = read_depth(top_depth, bottom_depth)
-
-    coord_type = content[6]
-    read_coord_type(content[6])
+    top_depth = float(content[4])
+    bottom_depth = float(content[5])
+    coord_type = read_coord_type(content[6])
 
     ra = []
     za = []
     ray_info = []
     i = 7
     while i < len(content):
-        departure_angle = content[i]
-        nb_steps, nb_top_ref, nb_bot_ref = content[i + 1].split()
+        departure_angle = float(content[i])
+        nb_steps, nb_top_ref, nb_bot_ref = tuple(int(elem) for elem in content[i + 1].split())
         ray_info.append([departure_angle, nb_steps, nb_top_ref, nb_bot_ref])
         i += 2
-        nb_steps = int(nb_steps)
         r = np.zeros(nb_steps)
         z = np.zeros(nb_steps)
         for nj in range(nb_steps):
             r[nj], z[nj] = content[i].split()
             i += 1
-        read_r(r, rmax, nb_steps)
+        read_r(r, r_max, nb_steps)
         ra.append(r)
         za.append(z)
 
-    env_data = {"title": title,
+    return {"title": title,
                 "frequency": frequency,
                 "nb_coord": nb_coord,
                 "nb_beam": nb_beam,
-                "top": top_d,
-                "bottom": bottom_d,
+                "top": top_depth,
+                "bottom": bottom_depth,
                 "coord_type": coord_type,
                 "ray_info": ray_info,
                 "ra": ra,
                 "za": za,
-                }
+    }
 
-    return content, env_data
+
+def read_profile(content: list[str]) -> tuple[list[float], list[float], int]:
+    """Read depth and sound speed profiles of .env file."""
+    _, z_max = read_depth_line(content[5])
+
+    i = 6
+    depth_profile = []
+    sound_speed_profile = []
+    while True:
+        depth_profile.append(read_profile_depth_value(content[i]))
+        sound_speed_profile.append(read_profile_soundspeed_value(content[i]))
+        if depth_profile[-1] >= z_max:
+            break
+        i += 1
+
+    # verify last value
+    if depth_profile[-1] != z_max:
+        msg = "Wrong last depth value"
+        raise ValueError(msg)
+
+    check_soundspeed_profile(depth_profile)
+
+    return depth_profile, sound_speed_profile, i
+
+
+def read_nb_depth_range(line: str) -> tuple[int, float]:
+    """Read number and depth of point in .arr file.
+
+    This applies for source/receiver/range lines.
+    """
+    try:
+        split = line.split(maxsplit=1)
+        nb_src = int(split[0])
+        depth_src = float(split[1])
+    except ValueError:
+        msg = "Invalid line"
+        raise ValueError(msg) from None
+    return nb_src, depth_src
+
+
+def read_nb_ray(line: str) -> int:
+    """Read ray number in .arr file."""
+    try:
+        return int(line)
+    except ValueError:
+        msg = "Invalid line"
+        raise ValueError(msg) from None
 
 
 def read_head_bty(header: tuple) -> None:
@@ -264,25 +311,32 @@ def read_head_bty(header: tuple) -> None:
         raise ValueError(msg)
 
 
-def read_env_param(line: str) -> list[float]:
+def read_env_param(line: str) -> tuple[float, float, float, float]:
     """Read the environment parameters."""
     nb_param = 4
-    line = line.strip("/ ")
     if not (check_elem_num(line, nb_param)):
         msg = "Invalid environmental characteristics line"
         raise ValueError(msg)
-    return [float(elem) for elem in line.split()]
+    temp, sal, ph, pressure = tuple(float(elem) for elem in line.split())
+    return temp, sal, ph, pressure
 
 
-def check_media(number_media: int) -> None:
-    """Check the number of media."""
-    if number_media != 1:
-        msg = f"Invalid media line: {number_media}"
+def read_media(media_line: str) -> int:
+    """Read and validate the number of media."""
+    try:
+        media = int(media_line)
+    except ValueError:
+        msg = "Wrong media format"
+        raise ValueError(msg) from None
+
+    if media != 1:
+        msg = "Wrong media number"
         raise ValueError(msg)
+    return media
 
 
-def read_depth(line: str) -> tuple[float, float]:
-    """Read the depth of top and bottom."""
+def read_depth_line(line: str) -> tuple[float, float]:
+    """Read the min and max depth in .env file."""
     depth_list = [float(elem) for elem in line.split()[1:]]
     if not all(value >= 0 for value in depth_list):
         msg = "Invalid depth line"
@@ -293,14 +347,12 @@ def read_depth(line: str) -> tuple[float, float]:
     return depth_list[0], depth_list[1]
 
 
-def read_z(line: str, z_min: float) -> float:
-    """Read the depth value of depth profile and compares to z_min."""
-    z = float(line.split(maxsplit=1)[0])
-    check_depth(z, z_min)
-    return z
+def read_profile_depth_value(line: str) -> float:
+    """Read the depth value of depth profile in .env file."""
+    return float(line.split(maxsplit=1)[0])
 
 
-def read_soundspeed(line: str) -> float:
+def read_profile_soundspeed_value(line: str) -> float:
     """Read the celerity value of depth profile."""
     return float(line.split(maxsplit=2)[1])
 
@@ -321,7 +373,7 @@ def check_soundspeed_profile(d_prof: list[float]) -> None:
 
 def read_bottom_properties(line: str, z_max: float) -> list[float]:
     """Read bottom properties."""
-    line = line.strip(" /")
+    line = line
     nb_property = 6
     if not check_elem_num(line, nb_property):
         msg = "Bottom properties line: wrong number of element"
@@ -329,14 +381,15 @@ def read_bottom_properties(line: str, z_max: float) -> list[float]:
     if float(line.split(" ", maxsplit=1)[0]) != z_max:
         msg = "Bottom properties line: wrong z_max"
         raise ValueError(msg)
-    return [float(elem) for elem in line.strip(" /").split()]
+    return [float(elem) for elem in line.split()]
 
 
-def check_run_type(line: str) -> None:
+def read_run_type(line: str) -> str:
     """Check the run type."""
     if line not in {"E", "I", "A", "R"}:
         msg = "Incorrect run type"
         raise ValueError(msg)
+    return line
 
 
 def check_angle(angle: float) -> bool:
@@ -364,7 +417,7 @@ def check_inf(a: float, b: float) -> bool:
 
 def read_coord_type(line: str) -> str:
     """Read the coordinate type."""
-    if line != "'rz'":
+    if line != "rz":
         msg = "Invalid coordinate type"
         raise ValueError(msg)
     return line
@@ -389,13 +442,14 @@ def read_r(r: ndarray, rmax: float, nsteps: int) -> ndarray:
     return r
 
 
-def read_dim(line: str, nb: int) -> str:
-    """Read the dimension of calcul."""
-    if not check_len_list(line, nb):
-        msg = f"Invalid len of dimension line: {line}"
-        raise ValueError(msg)
-    dim = line[1:3]
-    if dim != "2D":
-        msg = f"Invalid dimension line: {dim}"
+def read_dimension(line: str) -> int:
+    """Read the dimension in .arr file."""
+    try:
+        dim = int(line.strip("D"))
+    except ValueError:
+        msg = "Invalid dimension line"
+        raise ValueError(msg) from None
+    if dim != 2:
+        msg = f"Invalid dimension number: {dim}"
         raise ValueError(msg)
     return dim
