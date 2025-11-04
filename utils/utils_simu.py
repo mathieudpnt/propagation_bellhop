@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
+from core_utils import check_empty_file, check_file_exist, check_suffix
 from netCDF4 import Dataset
-from numpy import dtype, float64, floating, ndarray
+from numpy import ndarray
 from numpy.fft import fft, ifft
 from pandas import Series
 from reader_utils import read_env
@@ -21,22 +22,16 @@ from scipy.signal import chirp
 from utils.core_utils import (
     atten_fg,
     bottom_reflection_coefficient,
-    check_empty_file,
-    check_file_exist,
-    check_suffix,
     compute_sound_speed,
     find_nearest,
     find_pow2,
-    bottom_reflection_coefficient,
     surface_reflection_coefficient,
 )
 from utils.reader_utils import read_head_bty
-from core_utils import check_file_exist, check_suffix, check_empty_file
 from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
 
 if TYPE_CHECKING:
     from collections import namedtuple
-    from collections.abc import Iterable
 
     import pandas as pd
 
@@ -225,10 +220,7 @@ def extract_bathy(source: pd.Series,
     z_max = max(zb) - (max(zb) % 5)  # maximum depth with a 5-meter resolution
     z_transect = np.linspace(0, z_max, 32)  # for compatibility with CROCO
 
-    # number of horizontal layers, assuming a 25-meter spacing
-    nb_layer = int((station["distance"] * 1000) // 25)
-
-    return zb, dist, z_transect, nb_layer
+    return zb, dist, z_transect
 
 
 def sound_speed_profile(method: str, yday: int, z: np.array, ref_coord: tuple
@@ -292,17 +284,14 @@ def sound_speed_profile(method: str, yday: int, z: np.array, ref_coord: tuple
             for sal, temp, z_i in zip(salinity, temperature, z, strict=False)]
 
 
-def run_bellhop(executable: Path,
-                bellhop_dir: Path,
+def run_bellhop(roots: list[Path],
                 filename: str,
                 calc: str | list[str],
                 z_max: float,
                 source: pd.Series,
                 station: pd.Series,
-                dist: np.ndarray,
-                zb: Iterable,
+                bty: list[np.ndarray],
                 sound_speed: np.ndarray,
-                z_transect: np.ndarray,
                 param_seabed: pd.Series,
                 croco_data: pd.Series,
                 param_water: pd.Series,
@@ -317,10 +306,10 @@ def run_bellhop(executable: Path,
 
     Parameters
     ----------
-    executable : Path
-        Path to the Bellhop executable file.
-    bellhop_dir : Path
-        Directory where Bellhop input and output files will be stored.
+    roots : list[Path]
+        List of paths containing :
+            - executable : Path to the Bellhop executable file.
+            - bellhop_dir : Directory where Bellhop input/output files will be stored.
     filename : str
         Base name for the Bellhop files (without extension).
     calc : str or list of str
@@ -332,15 +321,14 @@ def run_bellhop(executable: Path,
         A Pandas Series containing source parameters.
     station : pd.Series
         A Pandas Series containing station parameters.
-    dist : np.array
-        A NumPy array representing distances along the propagation path.
-    zb : list
-        A list containing bathymetric depth values along the path.
+    bty : list[list[float]]
+        A list of lists containing bathymetry parameter values.
+            - dist : A NumPy array representing distances along the propagation path.
+            - zb : A list containing bathymetric depth values along the path.
+            - z_transect : A NumPy array representing the vertical depth (z) coordinates
+                            of the propagation path.
     sound_speed : np.array
         A NumPy array containing the sound speed profile at different depths.
-    z_transect : np.array
-        A NumPy array representing the vertical depth (z) coordinates
-        of the propagation path.
     param_seabed : pd.Series
         A Pandas Series containing seabed parameters.
     croco_data : serie
@@ -370,8 +358,9 @@ def run_bellhop(executable: Path,
             the rays emitted (arrival delay, amplitude...)
 
     """
+    [zb, dist, z_transect] = bty
+    [executable, bellhop_dir] = roots
     # Compute central frequency of the sound source
-    f_cen = int((source["f_min"] + source["f_max"]) / 2)
     a = station.distance
     # Define the number of bathymetry points (ensuring at least 15 points)
     nb_p = max(15, int(10 * a))  # Sampling at 100m intervals
@@ -389,7 +378,6 @@ def run_bellhop(executable: Path,
         # Generate Bellhop environment file
         envfil = write_env_file(bellhop_dir,
             f"{filename}{c}",
-            f_cen,
             source,
             station,
             sound_speed,
