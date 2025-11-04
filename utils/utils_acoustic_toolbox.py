@@ -196,12 +196,14 @@ def read_shd(filename: Path) -> ndarray[float]:
             ys = read_record(fid, np.float32, nsy, offset=5 * record_length)
         else:   # compressed format for TL from FIELD3D
             pos_s_x = read_record(fid, np.float32, 2, offset=3 * record_length + 4)
-            xs = np.linspace(pos_s_x[0], pos_s_x[1], nsx)
             pos_s_y = read_record(fid, np.float32, 2, offset=5 * record_length)
+            xs = np.linspace(pos_s_x[0], pos_s_x[1], nsx)
             ys = np.linspace(pos_s_y[0], pos_s_y[1], nsy)
+
         zs = read_record(fid, np.float32, nsd, offset=6 * record_length)
         zarray = read_record(fid, np.float32, nrd, offset=7 * record_length)  # depth of the receivers
         rarray = read_record(fid, np.float32, nrr, offset=8 * record_length)  # range of the receivers
+
         nb_rcvrs_per_range = 1 if plot_type == "irregular " else nrd
         pressure = (np.zeros((ntheta, nsd, nb_rcvrs_per_range, nrr))
                     + 1j * np.zeros((ntheta, nsd, nb_rcvrs_per_range, nrr)))
@@ -220,14 +222,9 @@ def read_shd(filename: Path) -> ndarray[float]:
             for itheta in range(ntheta):
                 for isd in range(nsd):
                     for ird in range(nb_rcvrs_per_range):
-                        recnum = (
-                            9
-                            + idx_x * nsy * ntheta * nsd * nb_rcvrs_per_range
-                            + idx_y * ntheta * nsd * nb_rcvrs_per_range
-                            + itheta * nsd * nb_rcvrs_per_range
-                            + isd * nb_rcvrs_per_range
-                            + ird
-                        )
+                        recnum = (9 + ird + nb_rcvrs_per_range *
+                            (idx_x * nsy * ntheta * nsd + idx_y * ntheta * nsd
+                            + itheta * nsd + isd))
                         counter.append((itheta, isd, ird, recnum))
 
         for itheta, isd, ird, recnum in counter:
@@ -273,12 +270,9 @@ def plotray(filename: Path) -> int:
     """
     # header reading
     fid = Path.open(filename)
-    next(fid), next(fid), next(fid)
-
-    n_beam_angles = int((fid.readline()).split()[0])  # number of elevation beams
-
-    next(fid), next(fid), next(fid)
-    nalpha = n_beam_angles  # number of elevation beams
+    [next(fid) for _ in range(3)]
+    nalpha = int((fid.readline()).split()[0])  # number of elevation beams
+    [next(fid) for _ in range(3)]
 
     # for each beam the coordinates of nsteps points are extracted from the initial file
     for _ibeam in range(nalpha):
@@ -290,9 +284,7 @@ def plotray(filename: Path) -> int:
 
             # extraction of the coordinates for each point
             for nj in range(nsteps):
-                rz = str(fid.readline()).split()
-                r[nj] = float(rz[0])
-                z[nj] = float(rz[1])
+                r[nj], z[nj] = fid.readline().split()
 
             # truncating the coordinates to r and z limits
             rmin = float(min([min(r), 1.0e9]))
