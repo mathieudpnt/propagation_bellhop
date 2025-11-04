@@ -236,7 +236,8 @@ def read_shd(filename: Path) -> ndarray[float]:
                     "f": freq,
                     "thetas": thetas,
                     "rarray": rarray,
-                    "zarray": zarray}
+                    "zarray": zarray
+    }
 
     return pressure, geometry
 
