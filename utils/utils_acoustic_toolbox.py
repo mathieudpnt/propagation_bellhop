@@ -146,6 +146,12 @@ def write_env_file(root: Path,
     return file
 
 
+def read_record(fid, dtype, count=1, offset=None):
+    if offset is not None:
+        fid.seek(offset)
+    return np.fromfile(fid, dtype, count)
+
+
 def read_shd(filename: Path) -> ndarray[float]:
     """Read the .shd file resulting from using Bellhop.
 
@@ -172,94 +178,68 @@ def read_shd(filename: Path) -> ndarray[float]:
     # Based on read_shd_bin.m by Michael Porter
 
     """
-    fid = Path.open(filename, "rb")
-    recl = int(np.fromfile(fid, np.int32, 1))
-    next(fid)
-    fid.seek(4 * recl)
-    plot_type = fid.read(10)
-    fid.seek(2 * 4 * recl)  # reposition to end of second record
-    freq = float(np.fromfile(fid, np.float32, 1))
-    ntheta = int(np.fromfile(fid, np.int32, 1))
-    nsx = int(np.fromfile(fid, np.int32, 1))
-    nsy = int(np.fromfile(fid, np.int32, 1))
-    nsd = int(np.fromfile(fid, np.int32, 1))
-    nrd = int(np.fromfile(fid, np.int32, 1))
-    nrr = int(np.fromfile(fid, np.int32, 1))
-    fid.seek(3 * 4 * recl)  # reposition to end of record 3
-    thetas = np.fromfile(fid, np.float32, ntheta)
-    if plot_type[0 : 1] != "TL":
-        fid.seek(4 * 4 * recl)  # reposition to end of record 4
-        xs = np.fromfile(fid, np.float32, nsx)
-        fid.seek(5 * 4 * recl)  # reposition to end of record 5
-        ys = np.fromfile(fid, np.float32, nsy)
-    else:   # compressed format for TL from FIELD3D
-        fid.seek(4 * 4 * recl)  # reposition to end of record 4
-        pos_s_x = np.fromfile(fid, np.float32, 2)
-        xs = np.linspace(pos_s_x[0], pos_s_x[1], nsx)
-        fid.seek(5 * 4 * recl)  # reposition to end of record 5
-        pos_s_y = np.fromfile(fid, np.float32, 2)
-        ys = np.linspace(pos_s_y[0], pos_s_y[1], nsy)
-    fid.seek(6 * 4 * recl)  # reposition to end of record 6
-    zs = np.fromfile(fid, np.float32, nsd)
-    fid.seek(7 * 4 * recl)  # reposition to end of record 7
-    zarray = np.fromfile(fid, np.float32, nrd)
-    fid.seek(8 * 4 * recl)  # reposition to end of record 8
-    rarray = np.fromfile(fid, np.float32, nrr)
-    if plot_type == "rectilin  ":
-        nrcvrs_per_range = nrd
-    elif plot_type == "irregular ":
-        nrcvrs_per_range = 1
-    else:
-        nrcvrs_per_range = nrd
-    pressure = (np.zeros((ntheta, nsd, nrcvrs_per_range, nrr))
-                + 1j * np.zeros((ntheta, nsd, nrcvrs_per_range, nrr)))
-    if np.isnan(xs):
-        for itheta in range(ntheta):
-            for isd in range(nsd):
-                for ird in range(nrcvrs_per_range):
-                    recnum = (
-                        9
-                        + itheta * nsd * nrcvrs_per_range
-                        + isd * nrcvrs_per_range
-                        + ird
-                    )
-                    status = fid.seek(
-                        recnum * 4 * recl,
-                    )  # Move to end of previous record
-                    if status == -1:
-                        pass
-                    temp = np.fromfile(fid, np.float32, 2 * nrr)  # Read complex data
-                    for k in range(nrr):
-                        pressure[itheta, isd, ird, k] = (temp[2 * k] + 1j
-                                                           * temp[2 * k + 1])
+    with Path.open(filename, "rb") as fid:
+        recl = int(read_record(fid, np.int32, 1))
+        record_length = 4 * recl
+        fid.seek(record_length)  # reposition to end of first record
+        plot_type = fid.read(10)
 
-    else:
-        xdiff = abs(xs - xs * 1000.0)
-        idx_x = xdiff.argmin(0)
-        ydiff = abs(ys - ys * 1000.0)
-        idx_y = ydiff.argmin(0)
-        for itheta in range(ntheta):
-            for isd in range(nsd):
-                for ird in range(nrcvrs_per_range):
-                    recnum = (9 + idx_x * nsy * ntheta * nsd * nrcvrs_per_range
-                            + idx_y * ntheta * nsd * nrcvrs_per_range + itheta *
-                            nsd * nrcvrs_per_range + isd * nrcvrs_per_range + ird)
-                    status = fid.seek(recnum * 4 * recl)  # Move to end of previous
-                    # record
+        offset = 2 * record_length
+        freq = float(read_record(fid, np.float32, 1, offset=offset))
+        ntheta, nsx, nsy, nsd, nrd, nrr = read_record(fid, np.int32, 6,
+                                                      offset=offset + 4)
 
-                    if status == -1:
-                        pass
-                    temp = np.fromfile(fid, np.float32, 2 * nrr)  # Read complex data
-                    for k in range(nrr):
-                        pressure[itheta, isd, ird, k] = (temp[2 * k] + 1j *
-                                                          temp[2 * k + 1])
+        thetas = read_record(fid, np.float32, ntheta, offset=3 * record_length)
 
-    fid.close()
-    geometry = {"zs": zs,
-                "f": freq,
-                "thetas": thetas,
-                "rarray": rarray,
-                "zarray": zarray}
+        if plot_type[0 : 1] != "TL":
+            xs = read_record(fid, np.float32, nsx, offset=4 * record_length)
+            ys = read_record(fid, np.float32, nsy, offset=5 * record_length)
+        else:   # compressed format for TL from FIELD3D
+            pos_s_x = read_record(fid, np.float32, 2, offset=3 * record_length + 4)
+            xs = np.linspace(pos_s_x[0], pos_s_x[1], nsx)
+            pos_s_y = read_record(fid, np.float32, 2, offset=5 * record_length)
+            ys = np.linspace(pos_s_y[0], pos_s_y[1], nsy)
+        zs = read_record(fid, np.float32, nsd, offset=6 * record_length)
+        zarray = read_record(fid, np.float32, nrd, offset=7 * record_length)  # depth of the receivers
+        rarray = read_record(fid, np.float32, nrr, offset=8 * record_length)  # range of the receivers
+        nb_rcvrs_per_range = 1 if plot_type == "irregular " else nrd
+        pressure = (np.zeros((ntheta, nsd, nb_rcvrs_per_range, nrr))
+                    + 1j * np.zeros((ntheta, nsd, nb_rcvrs_per_range, nrr)))
+
+        counter = []
+        if np.isnan(xs):
+            for itheta in range(ntheta):
+                for isd in range(nsd):
+                    for ird in range(nb_rcvrs_per_range):
+                        recnum = (9 + itheta * nsd * nb_rcvrs_per_range
+                            + isd * nb_rcvrs_per_range + ird)
+                        counter.append((itheta, isd, ird, recnum))
+        else:
+            idx_x = abs(xs - xs * 1000.0).argmin(0)
+            idx_y = abs(ys - ys * 1000.0).argmin(0)
+            for itheta in range(ntheta):
+                for isd in range(nsd):
+                    for ird in range(nb_rcvrs_per_range):
+                        recnum = (
+                            9
+                            + idx_x * nsy * ntheta * nsd * nb_rcvrs_per_range
+                            + idx_y * ntheta * nsd * nb_rcvrs_per_range
+                            + itheta * nsd * nb_rcvrs_per_range
+                            + isd * nb_rcvrs_per_range
+                            + ird
+                        )
+                        counter.append((itheta, isd, ird, recnum))
+
+        for itheta, isd, ird, recnum in counter:
+            temp = read_record(fid, np.float32, 2 * nrr, offset=recnum * record_length)
+            pressure[itheta, isd, ird, :] = temp[::2] + 1j * temp[1::2]
+
+        fid.close()
+        geometry = {"zs": zs,
+                    "f": freq,
+                    "thetas": thetas,
+                    "rarray": rarray,
+                    "zarray": zarray}
 
     return pressure, geometry
 
