@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
+import pandas as pd
 from core_utils import check_empty_file, check_file_exist, check_suffix
 from netCDF4 import Dataset
 from numpy import ndarray
@@ -191,8 +192,6 @@ def extract_bathy(source: pd.Series,
         A 1D NumPy array of 32 depth levels (for compatibility with CROCO),
         adjusted to the maximum bathymetric depth
         (rounded down to the nearest multiple of 5 meters).
-    nb_layer : int
-        The number of horizontal layers along the transect, assuming a 25-meter spacing.
 
     Notes
     -----
@@ -290,7 +289,7 @@ def run_bellhop(roots: list[Path],
                 z_max: float,
                 source: pd.Series,
                 station: pd.Series,
-                bty: list[np.ndarray],
+                bty: tuple[list[float], np.ndarray[float], np.ndarray[float]],
                 sound_speed: np.ndarray,
                 param_seabed: pd.Series,
                 croco_data: pd.Series,
@@ -321,12 +320,12 @@ def run_bellhop(roots: list[Path],
         A Pandas Series containing source parameters.
     station : pd.Series
         A Pandas Series containing station parameters.
-    bty : list[list[float]]
-        A list of lists containing bathymetry parameter values.
-            - dist : A NumPy array representing distances along the propagation path.
-            - zb : A list containing bathymetric depth values along the path.
-            - z_transect : A NumPy array representing the vertical depth (z) coordinates
-                            of the propagation path.
+    bty : tuple[list[float], np.ndarray[float], np.ndarray[float]]
+        A tuple containing:
+        - zb : list containing the bathymetric depth values along the transect,
+        - dist : NumPy array representing distances along the propagation path,
+        - z_transect : NumPy array representing the 32 vertical depth (z) coordinates
+        of the propagation path.
     sound_speed : np.array
         A NumPy array containing the sound speed profile at different depths.
     param_seabed : pd.Series
@@ -358,11 +357,9 @@ def run_bellhop(roots: list[Path],
             the rays emitted (arrival delay, amplitude...)
 
     """
-    [zb, dist, z_transect] = bty
-    [executable, bellhop_dir] = roots
-    # Compute central frequency of the sound source
-    a = station.distance
-    # Define the number of bathymetry points (ensuring at least 15 points)
+    zb, dist, z_transect = bty
+    executable, bellhop_dir = roots
+    a = station.distance  # Define the number of bathymetry points (min 15 points)
     nb_p = max(15, int(10 * a))  # Sampling at 100m intervals
 
     # Compute the number of rays based on distance (one ray per 25 meters)
@@ -407,9 +404,13 @@ def run_bellhop(roots: list[Path],
     return env_data
 
 
-def impulse_response(file: Path, source: dict[str, float], station: dict[str, float],
-                     param_water: dict[str, float], param_seabed: Series,
-                     param_env: float) -> tuple[np.ndarray[np.float64], np.ndarray[
+def impulse_response(file: Path,
+                     source: dict[str, float],
+                     station: dict[str, float],
+                     param_water: dict[str, float],
+                     param_seabed: Series,
+                     param_env: float,
+                     ) -> tuple[np.ndarray[np.float64], np.ndarray[
                      np.complex128], np.ndarray[np.float64], np.ndarray[np.float64],
                      np.ndarray[np.complex128]]:
     """Reconstruct the received signal.
@@ -530,12 +531,13 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
         rs = -surface_reflection_coefficient(tet, w, fk)  # surface reflexion
 
         # bottom reflexion
-        rb = bottom_reflection_coefficient(
+        rb = [bottom_reflection_coefficient(
                 tet,
                 param_seawater,
                 param_seabed,
                 freq[ni],
-            )
+            ),
+        ]
 
         atv = atten_fg(fk, salinity, temperature, 10, ph) * dis / 1000  # attenuation dB
         atten = np.exp(-atv * np.log(10) / 20)  # attenuation (Np)

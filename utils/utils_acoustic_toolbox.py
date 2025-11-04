@@ -14,7 +14,6 @@ from core_utils import readline_1, zeros
 from matplotlib import pyplot as plt
 from numpy import ndarray
 
-
 from utils.core_utils import depth_to_pressure, find_nearest
 
 
