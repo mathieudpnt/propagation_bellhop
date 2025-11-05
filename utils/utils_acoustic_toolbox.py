@@ -148,6 +148,7 @@ def write_env_file(root: Path,
 
 
 def read_record(fid, dtype, count=1, offset=None):
+    """"Read binary data from an open file, starting at a given file offset."""
     if offset is not None:
         fid.seek(offset)
     return np.fromfile(fid, dtype, count)
@@ -271,12 +272,13 @@ def plotray(file_env: Path, file_ray: Path) -> int:
     """
     data_env = read_env(file_env)
 
-    data_ray = read_ray(file_ray, data_env["rcv_r"] * 1000)
+    data_ray = read_ray(file_ray)
     r = data_ray["ra"]
     z = data_ray["za"]
 
     for r_i, z_i in zip(r, z, strict=False):
         plt.plot(r_i, -z_i)
+
 
 def read_arrivals_asc(filename: Path) -> ndarray[tuple[Any, ...]]:
     """Read the .asc file resulting from using Bellhop.

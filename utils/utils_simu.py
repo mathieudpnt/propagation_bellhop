@@ -289,12 +289,12 @@ def run_bellhop(roots: list[Path],
                 z_max: float,
                 source: pd.Series,
                 station: pd.Series,
-                bty: tuple[list[float], np.ndarray[float], np.ndarray[float]],
+                bathy: tuple[list[float], np.ndarray[float], np.ndarray[float]],
                 sound_speed: np.ndarray,
                 param_seabed: pd.Series,
                 croco_data: pd.Series,
                 param_water: pd.Series,
-                yday: int,
+                year_day: int,
                 ) -> list[tuple[float]]:
     """Run the Bellhop acoustic model to compute underwater sound propagation.
 
@@ -320,7 +320,7 @@ def run_bellhop(roots: list[Path],
         A Pandas Series containing source parameters.
     station : pd.Series
         A Pandas Series containing station parameters.
-    bty : tuple[list[float], np.ndarray[float], np.ndarray[float]]
+    bathy : tuple[list[float], np.ndarray[float], np.ndarray[float]]
         A tuple containing:
         - zb : list containing the bathymetric depth values along the transect,
         - dist : NumPy array representing distances along the propagation path,
@@ -335,7 +335,7 @@ def run_bellhop(roots: list[Path],
         (years of 360 days), at 32 depths, 109 tatitudes and 95 longitudes
     param_water : serie
         water parameters (salinity, temperature, ph)
-    yday : int
+    year_day : int
         Day of the year.
 
 
@@ -357,7 +357,7 @@ def run_bellhop(roots: list[Path],
             the rays emitted (arrival delay, amplitude...)
 
     """
-    zb, dist, z_transect = bty
+    zb, dist, z_transect = bathy
     executable, bellhop_dir = roots
     a = station.distance  # Define the number of bathymetry points (min 15 points)
     nb_p = max(15, int(10 * a))  # Sampling at 100m intervals
@@ -374,19 +374,19 @@ def run_bellhop(roots: list[Path],
     for c in calc:
         # Generate Bellhop environment file
         envfil = write_env_file(bellhop_dir,
-            f"{filename}{c}",
-            source,
-            station,
-            sound_speed,
-            z_transect,
-            nb_ray,
-            z_max,
-            param_seabed,
+                                f"{filename}{c}",
+                                source,
+                                station,
+                                sound_speed,
+                                z_transect,
+                                nb_ray,
+                                z_max,
+                                param_seabed,
             f"{c}",
-            croco_data,
-            param_water,
-            yday,
-        )
+                                croco_data,
+                                param_water,
+                                year_day,
+                                )
 
         # check environment file syntax then parse its content
         env_data.append(read_env(envfil))

@@ -201,15 +201,13 @@ def read_arr(file: Path) -> dict:
     }
 
 
-def read_ray(file: Path, r_max: float) -> dict:
+def read_ray(file: Path) -> dict:
     """Check the ray file created by bellhop.
 
     Parameters
     ----------
     file : Path
         Path to the ray file.
-    r_max : float
-        Distance between the source and the receiver.
 
     Returns
     -------
@@ -245,7 +243,7 @@ def read_ray(file: Path, r_max: float) -> dict:
             r[nj] = float(r[nj])
             z[nj] = float(z[nj])
             i += 1
-        read_r(r, r_max, nb_steps)
+        read_r(r, nb_steps)
         ra.append(r)
         za.append(z)
 
@@ -428,7 +426,7 @@ def read_coord_type(line: str) -> str:
     return line
 
 
-def read_r(r: ndarray, rmax: float, nsteps: int) -> ndarray:
+def read_r(r: ndarray, n_steps: int) -> ndarray:
     """Read the range profile."""
     for nj in range(len(r)):
         r[nj] = float(r[nj])
@@ -438,11 +436,8 @@ def read_r(r: ndarray, rmax: float, nsteps: int) -> ndarray:
     if not all(x <= y for x, y in itertools.pairwise(r)):
         msg = "Invalid range line: non increasing"
         raise ValueError(msg)
-    if abs(r[-1] - rmax) > 10:
-        msg = "Invalid maximal range : difference is too high"
-        raise ValueError(msg)
-    if not (check_len_list(r, nsteps)):
-        msg = "Invalid range lenght: wrong len"
+    if not (check_len_list(r, n_steps)):
+        msg = "Invalid range length: wrong length"
         raise ValueError(msg)
     return r
 
