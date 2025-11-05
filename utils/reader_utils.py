@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import itertools
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from core_utils import (
@@ -13,6 +13,9 @@ from core_utils import (
     check_suffix,
 )
 from numpy import ndarray
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def read_bellhop_file(file: Path) -> list[str]:
@@ -114,7 +117,7 @@ def read_env(file: Path) -> dict:
         "run_type": run_type,
         "nb_beam": nb_beam,
         "angles": (angle_inf, angle_sup),
-        "info": info
+        "info": info,
     }
 
 
@@ -172,7 +175,7 @@ def read_arr(file: Path) -> dict:
             src_ang,
             rcv_ang,
             nb_top_bnc,
-            nb_bot_bnc
+            nb_bot_bnc,
     )):
         msg = "Inconsistent length"
         raise ValueError(msg)
@@ -231,7 +234,8 @@ def read_ray(file: Path, r_max: float) -> dict:
     i = 7
     while i < len(content):
         departure_angle = float(content[i])
-        nb_steps, nb_top_ref, nb_bot_ref = tuple(int(elem) for elem in content[i + 1].split())
+        nb_steps, nb_top_ref, nb_bot_ref = tuple(int(elem)
+                                                 for elem in content[i + 1].split())
         ray_info.append([departure_angle, nb_steps, nb_top_ref, nb_bot_ref])
         i += 2
         r = np.zeros(nb_steps)
@@ -373,7 +377,6 @@ def check_soundspeed_profile(d_prof: list[float]) -> None:
 
 def read_bottom_properties(line: str, z_max: float) -> list[float]:
     """Read bottom properties."""
-    line = line
     nb_property = 6
     if not check_elem_num(line, nb_property):
         msg = "Bottom properties line: wrong number of element"

@@ -201,8 +201,10 @@ def read_shd(filename: Path) -> ndarray[float]:
             ys = np.linspace(pos_s_y[0], pos_s_y[1], nsy)
 
         zs = read_record(fid, np.float32, nsd, offset=6 * record_length)
-        zarray = read_record(fid, np.float32, nrd, offset=7 * record_length)  # depth of the receivers
-        rarray = read_record(fid, np.float32, nrr, offset=8 * record_length)  # range of the receivers
+        zarray = read_record(fid, np.float32,
+                             nrd, offset=7 * record_length)  # depth of the receivers
+        rarray = read_record(fid, np.float32,
+                             nrr, offset=8 * record_length)  # range of the receivers
 
         nb_rcvrs_per_range = 1 if plot_type == "irregular " else nrd
         pressure = (np.zeros((ntheta, nsd, nb_rcvrs_per_range, nrr))
@@ -236,7 +238,7 @@ def read_shd(filename: Path) -> ndarray[float]:
                     "f": freq,
                     "thetas": thetas,
                     "rarray": rarray,
-                    "zarray": zarray
+                    "zarray": zarray,
     }
 
     return pressure, geometry
@@ -353,7 +355,7 @@ def read_arrivals_asc(filename: Path) -> ndarray[tuple[Any, ...]]:
     for k in range(narr):
         (amp, phase, rtau, itau,
          src_angle[k], rcvr_angle[k],
-         num_top_bnc[k], num_bot_bnc[k]) = map(float,fid.readline().split())
+         num_top_bnc[k], num_bot_bnc[k]) = map(float, fid.readline().split())
         wave_eq[k] = amp * np.exp(1j * phase * np.pi / 180.0)  # complex wave equation
         delay[k] = rtau + 1j * itau  # complex delay
 

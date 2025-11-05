@@ -429,7 +429,7 @@ def impulse_response(file: Path,
         Dictionary containing information about the receivers (stations)
     param_water : dict
         Dictionary containing information about water parameters
-    param_seabed : Series
+    param_seabed : Series.
         Series containing seabed parameters
     param_env : float
         Wind speed
