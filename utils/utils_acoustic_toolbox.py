@@ -10,6 +10,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+
 from core_utils import readline_1, zeros
 from matplotlib import pyplot as plt
 from numpy import ndarray
@@ -246,7 +248,7 @@ def read_shd(filename: Path) -> ndarray[float]:
     return pressure, geometry
 
 
-def plotray(file_env: Path, file_ray: Path) -> int:
+def plotray(file_ray: Path, ax: Axes) -> int:
     """Read bellhop file and plot the rays.
 
     Read the .ray file resulting from using Bellhop, extract the
@@ -258,10 +260,10 @@ def plotray(file_env: Path, file_ray: Path) -> int:
 
     Parameters
     ----------
-    file_env :
-        path to the .env file
     file_ray :
         path to the .ray file
+    ax: Axes
+        matplotlib object
 
     Notes
     -----
@@ -270,14 +272,12 @@ def plotray(file_env: Path, file_ray: Path) -> int:
     # Based on plotray.m by Michael Porter
 
     """
-    data_env = read_env(file_env)
-
     data_ray = read_ray(file_ray)
     r = data_ray["ra"]
     z = data_ray["za"]
 
     for r_i, z_i in zip(r, z, strict=False):
-        plt.plot(r_i, -z_i)
+        ax = plt.plot(r_i, -z_i)
 
 
 def read_arrivals_asc(filename: Path) -> ndarray[tuple[Any, ...]]:
