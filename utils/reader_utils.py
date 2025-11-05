@@ -430,7 +430,7 @@ def read_r(r: ndarray, n_steps: int) -> ndarray:
     """Read the range profile."""
     for nj in range(len(r)):
         r[nj] = float(r[nj])
-        if not (r[nj]) >= 0:
+        if r[nj] <= 0:
             msg = "Invalid maximal range: negative value"
             raise ValueError(msg)
     if not all(x <= y for x, y in itertools.pairwise(r)):
