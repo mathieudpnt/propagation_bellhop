@@ -264,9 +264,9 @@ def bottom_reflection_coefficient(
         Reflection coefficient for a fluid-fluid interface.
 
     """
-    c1 = para_1[0]  # soundspeed in the water
-    rho1 = para_1[1]  # density of the water
-    at1 = para_1[2]  # attenuation of the sound in the water (dB/lambda)
+    c1 = para_1.iloc[0]  # soundspeed in the water
+    rho1 = para_1.iloc[1]  # density of the water
+    at1 = para_1.iloc[2]  # attenuation of the sound in the water (dB/lambda)
 
     c2 = para_2.iloc[0]  # soundspeed in seabed
     rho2 = para_2.iloc[1]  # density of seabed

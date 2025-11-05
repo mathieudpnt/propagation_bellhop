@@ -28,8 +28,8 @@ from utils.core_utils import (
     find_pow2,
     surface_reflection_coefficient,
 )
-from utils.reader_utils import read_head_bty
-from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
+from utils.reader_utils import read_arr, read_head_bty
+from utils.utils_acoustic_toolbox import write_env_file
 
 if TYPE_CHECKING:
     from collections import namedtuple
@@ -448,7 +448,7 @@ def impulse_response(file: Path,
         Frequency response
 
     """
-    arr, _ = read_arrivals_asc(file)
+    arr, _ = read_arr(file)
     arr: dict[str, np.ndarray]
 
     d = 1000 * station["distance"]  # distance between the source and receiver
@@ -467,7 +467,7 @@ def impulse_response(file: Path,
 
     w = param_env
 
-    ta = d / np.cos(np.pi / 180 * grazing_angle) / 1500
+    ta = float(d / np.cos(np.pi / 180 * grazing_angle) / 1500)
     # maximal duration of the wave path with a certain grazing angle
     nbp = 2 ** find_pow2((ta + 2 * t0) * samp_freq)  # number of points
     freq = np.arange(0, samp_freq, samp_freq / nbp)  # frequency axis
@@ -494,12 +494,13 @@ def impulse_response(file: Path,
         msg = "Invalid source type. Source type must be 'click_M' or 'whistle_D'."
         raise ValueError(msg)
 
-    t = np.squeeze(arr["delay"].real)  # arrival time
-    tet = np.squeeze(1 / 2 * (abs(arr["src_angle"]) + abs(arr["rcvr_angle"])))
+    delay = np.array(arr["delay"])
+    t = np.squeeze(delay.real)  # arrival time
+    tet = np.squeeze(1 / 2 * (abs(arr["src_angle"]) + abs(arr["rcv_angle"])))
     # average ray angle at the interferences
     dis = 1500 * t  # distance traveled (m)
-    ns = np.squeeze(arr["num_top_bnc"])  # number of top reflections
-    nb = np.squeeze(arr["num_bot_bnc"])  # number of bottom reflexions
+    ns = np.squeeze(arr["nb_top_bnc"])  # number of top reflections
+    nb = np.squeeze(arr["nb_bot_bnc"])  # number of bottom reflexions
 
     # loop on frequency
     n1 = np.where(freq >= fmin)[0][0]

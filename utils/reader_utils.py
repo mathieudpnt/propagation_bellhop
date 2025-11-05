@@ -10,7 +10,7 @@ from core_utils import (
     check_empty_file,
     check_file_exist,
     check_len_list,
-    check_suffix,
+    check_suffix, zeros
 )
 from numpy import ndarray
 
@@ -122,17 +122,25 @@ def read_env(file: Path) -> dict:
 
 
 def read_arr(file: Path) -> dict:
-    """Check the arrival file created by bellhop.
+    """Read the .asc file resulting from using Bellhop.
+
+    and extracts the ray's arrival times
+    Only runs if the arrival calculation type (a) is chosen
 
     Parameters
     ----------
     file : Path
-        Path to the .arr file.
+        Path and name of the .asc file to read
 
     Returns
     -------
+    arr : ndarray
+        Array that contains information about the rays path
+        (total number of studied rays, wave equation,
+        complex delay, departure angle, arrival angle,
+        number of top reflexions, number of bottom reflexions)
     content : list
-        The contents of the .arr file.
+        Other information in the file.
 
     """
     check_suffix(file, ".arr")
@@ -143,33 +151,36 @@ def read_arr(file: Path) -> dict:
     nb_src, src_z = read_nb_depth_range(content[2])
     nb_rcv_z, rcv_z = read_nb_depth_range(content[3])
     nb_rcv_r, rcv_r = read_nb_depth_range(content[4])
-    narr = read_nb_ray(content[5])
+    nb_arr = read_nb_ray(content[5])
 
     i = 7
-    amp = []
-    phase = []
-    delay_re = []
-    delay_im = []
-    src_ang = []
-    rcv_ang = []
-    nb_top_bnc = []
+    wave_eq = zeros(nb_arr, 1)  # wave equation
+    delay = zeros(nb_arr, 1)  # complex delay
+    delay_re = zeros(nb_arr, 1)
+    delay_im = zeros(nb_arr, 1)
+    src_ang = zeros(nb_arr, 0)  # departure angle
+    rcv_ang = zeros(nb_arr, 0)  # arrival angle
+    nb_top_bnc = []  # number of top reflexions
     nb_bot_bnc = []
-    a = i + narr
+
+    a = i + nb_arr
+    k = 0
     while i < a:
         line = content[i].split()
-        amp.append(float(line[0]))
-        phase.append(float(line[1]))
-        delay_re.append(float(line[2]))
-        delay_im.append(float(line[3]))
-        src_ang.append(float(line[4]))
-        rcv_ang.append(float(line[5]))
+        amp = (float(line[0]))
+        phase = (float(line[1]))
+        delay_re[k]=(float(line[2]))
+        delay_im[k]=(float(line[3]))
+        src_ang[k]=(float(line[4]))
+        rcv_ang[k]=(float(line[5]))
         nb_top_bnc.append(int(line[6]))
         nb_bot_bnc.append(int(line[7]))
+        wave_eq[k]=(amp * np.exp(1j * phase * np.pi / 180.0))  # complex wave equation
+        delay[k]=(delay_re[k] + 1j * delay_im[k])  # complex delay
+        k += 1
         i += 1
 
-    if not all(len(arr) == narr for arr in (
-            amp,
-            phase,
+    if not all(len(arr) == nb_arr for arr in (
             delay_re,
             delay_im,
             src_ang,
@@ -180,8 +191,15 @@ def read_arr(file: Path) -> dict:
         msg = "Inconsistent length"
         raise ValueError(msg)
 
-    return {
-        "dim": dim,
+    arr = {"nb_arr": nb_arr,
+           "wave_eq": wave_eq,
+           "delay": delay,
+           "src_angle": src_ang,
+           "rcv_angle": rcv_ang,
+           "nb_top_bnc": nb_top_bnc,
+           "nb_bot_bnc": nb_bot_bnc}
+
+    return arr, {"dim": dim,
         "frequency": frequency,
         "nb_src": nb_src,
         "src_z": src_z,
@@ -189,16 +207,9 @@ def read_arr(file: Path) -> dict:
         "rcv_z": rcv_z,
         "nb_rcv_r": nb_rcv_r,
         "rcv_r": rcv_r,
-        "narr": narr,
         "amp": amp,
-        "phase": phase,
-        "delay_re": delay_re,
-        "delay_im": delay_im,
-        "src_ang": src_ang,
-        "rcv_ang": rcv_ang,
-        "nb_top_bnc": nb_top_bnc,
-        "nb_bot_bnc": nb_bot_bnc,
-    }
+        "phase": phase}
+
 
 
 def read_ray(file: Path) -> dict:
@@ -238,10 +249,10 @@ def read_ray(file: Path) -> dict:
         i += 2
         r = np.zeros(nb_steps)
         z = np.zeros(nb_steps)
-        for nj in range(nb_steps):
-            r[nj], z[nj] = content[i].split()
-            r[nj] = float(r[nj])
-            z[nj] = float(z[nj])
+        for step in range(nb_steps):
+            r[step], z[step] = content[i].split()
+            r[step] = float(r[step])
+            z[step] = float(z[step])
             i += 1
         read_r(r, nb_steps)
         ra.append(r)
@@ -430,7 +441,7 @@ def read_r(r: ndarray, n_steps: int) -> ndarray:
     """Read the range profile."""
     for nj in range(len(r)):
         r[nj] = float(r[nj])
-        if r[nj] <= 0:
+        if r[nj] < 0:
             msg = "Invalid maximal range: negative value"
             raise ValueError(msg)
     if not all(x <= y for x, y in itertools.pairwise(r)):
