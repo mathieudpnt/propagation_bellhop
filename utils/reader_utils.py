@@ -242,6 +242,8 @@ def read_ray(file: Path, r_max: float) -> dict:
         z = np.zeros(nb_steps)
         for nj in range(nb_steps):
             r[nj], z[nj] = content[i].split()
+            r[nj] = float(r[nj])
+            z[nj] = float(z[nj])
             i += 1
         read_r(r, r_max, nb_steps)
         ra.append(r)
@@ -431,16 +433,16 @@ def read_r(r: ndarray, rmax: float, nsteps: int) -> ndarray:
     for nj in range(len(r)):
         r[nj] = float(r[nj])
         if not (r[nj]) >= 0:
-            msg = "Invalid maximal range"
+            msg = "Invalid maximal range: negative value"
             raise ValueError(msg)
-    if not all(x < y for x, y in itertools.pairwise(r)):
-        msg = "Invalid range line"
+    if not all(x <= y for x, y in itertools.pairwise(r)):
+        msg = "Invalid range line: non increasing"
         raise ValueError(msg)
-    if round(r[-1], 0) != rmax:
-        msg = "Invalid maximal range"
+    if abs(r[-1] - rmax) > 10:
+        msg = "Invalid maximal range : difference is too high"
         raise ValueError(msg)
     if not (check_len_list(r, nsteps)):
-        msg = "Invalid range lenght"
+        msg = "Invalid range lenght: wrong len"
         raise ValueError(msg)
     return r
 

@@ -13,6 +13,7 @@ import pandas as pd
 from core_utils import readline_1, zeros
 from matplotlib import pyplot as plt
 from numpy import ndarray
+from reader_utils import read_arr, read_env, read_ray
 
 from utils.core_utils import depth_to_pressure, find_nearest
 
@@ -244,7 +245,7 @@ def read_shd(filename: Path) -> ndarray[float]:
     return pressure, geometry
 
 
-def plotray(filename: Path) -> int:
+def plotray(file_env: Path, file_ray: Path) -> int:
     """Read bellhop file and plot the rays.
 
     Read the .ray file resulting from using Bellhop, extract the
@@ -256,13 +257,10 @@ def plotray(filename: Path) -> int:
 
     Parameters
     ----------
-    filename :
-        name of the .ray file to read
-
-    Returns
-    -------
-    None
-        This function plots the eigenrays path on one graph
+    file_env :
+        path to the .env file
+    file_ray :
+        path to the .ray file
 
     Notes
     -----
@@ -271,37 +269,14 @@ def plotray(filename: Path) -> int:
     # Based on plotray.m by Michael Porter
 
     """
-    # header reading
-    fid = Path.open(filename)
-    [next(fid) for _ in range(3)]
-    nalpha = int((fid.readline()).split()[0])  # number of elevation beams
-    [next(fid) for _ in range(3)]
+    data_env = read_env(file_env)
 
-    # for each beam the coordinates of nsteps points are extracted from the initial file
-    for _ibeam in range(nalpha):
-        len_ = len(str(fid.readline()))  # departure angle of the  beam
-        if len_ > 0:  # loop until the end of the document
-            nsteps = int(fid.readline().split()[0])  # number of points on the beam
-            r = zeros(nsteps, 0)  # initiation of range array
-            z = zeros(nsteps, 0)  # initiation of depth array
+    data_ray = read_ray(file_ray, data_env["rcv_r"] * 1000)
+    r = data_ray["ra"]
+    z = data_ray["za"]
 
-            # extraction of the coordinates for each point
-            for nj in range(nsteps):
-                r[nj], z[nj] = fid.readline().split()
-
-            # truncating the coordinates to r and z limits
-            rmin = float(min([min(r), 1.0e9]))
-            rmax = float(max([max(r), -1.0e9]))
-            zmin = float(min([min(z), 1.0e9]))
-            zmax = float(max([max(z), -1.0e9]))
-
-            # creating the graph
-            plt.plot(r, -z)
-            plt.axis((rmin, rmax, -zmax, -zmin))
-
-    fid.close()
-    return nalpha
-
+    for r_i, z_i in zip(r, z, strict=False):
+        plt.plot(r_i, -z_i)
 
 def read_arrivals_asc(filename: Path) -> ndarray[tuple[Any, ...]]:
     """Read the .asc file resulting from using Bellhop.
@@ -333,6 +308,7 @@ def read_arrivals_asc(filename: Path) -> ndarray[tuple[Any, ...]]:
     # Based on read_arrivals_asc.m by Michael Porter
 
     """
+    content_arr = read_arr(filename)
     fid = Path.open(filename)
     next(fid)
     freq = float(fid.readline())  # frequency
