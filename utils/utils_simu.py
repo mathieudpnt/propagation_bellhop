@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
+import pandas as pd
+from core_utils import check_empty_file, check_file_exist, check_suffix
 from netCDF4 import Dataset
-from numpy import dtype, float64, floating, ndarray
+from numpy import ndarray
 from numpy.fft import fft, ifft
 from pandas import Series
 from reader_utils import read_env
@@ -21,22 +23,17 @@ from scipy.signal import chirp
 from utils.core_utils import (
     atten_fg,
     bottom_reflection_coefficient,
-    check_empty_file,
-    check_file_exist,
-    check_suffix,
     compute_sound_speed,
     find_nearest,
     find_pow2,
-    bottom_reflection_coefficient,
     surface_reflection_coefficient,
+    zeros,
 )
-from utils.reader_utils import read_head_bty
-from core_utils import check_file_exist, check_suffix, check_empty_file
-from utils.utils_acoustic_toolbox import read_arrivals_asc, write_env_file
+from utils.reader_utils import read_arr, read_head_bty
+from utils.utils_acoustic_toolbox import write_env_file
 
 if TYPE_CHECKING:
     from collections import namedtuple
-    from collections.abc import Iterable
 
     import pandas as pd
 
@@ -98,8 +95,10 @@ def read_croco(file: Path) -> CrocoData:
                      depth=depth, lon=lon, lat=lat)
 
 
-def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarray[tuple
-    [Any, ...], Any]:
+def read_bathy(file: Path,
+               lim_lat: list[float],
+               lim_lon: list[float]
+               ) -> ndarray[tuple[Any, ...], Any]:
     """Read a bathymetric file and extracts information.
 
     Extracts the data that falls within the specified latitude and longitude limits.
@@ -196,8 +195,6 @@ def extract_bathy(source: pd.Series,
         A 1D NumPy array of 32 depth levels (for compatibility with CROCO),
         adjusted to the maximum bathymetric depth
         (rounded down to the nearest multiple of 5 meters).
-    nb_layer : int
-        The number of horizontal layers along the transect, assuming a 25-meter spacing.
 
     Notes
     -----
@@ -225,10 +222,7 @@ def extract_bathy(source: pd.Series,
     z_max = max(zb) - (max(zb) % 5)  # maximum depth with a 5-meter resolution
     z_transect = np.linspace(0, z_max, 32)  # for compatibility with CROCO
 
-    # number of horizontal layers, assuming a 25-meter spacing
-    nb_layer = int((station["distance"] * 1000) // 25)
-
-    return zb, dist, z_transect, nb_layer
+    return zb, dist, z_transect
 
 
 def sound_speed_profile(method: str, yday: int, z: np.array, ref_coord: tuple
@@ -299,14 +293,12 @@ def run_bellhop(executable: Path,
                 z_max: float,
                 source: pd.Series,
                 station: pd.Series,
-                dist: np.ndarray,
-                zb: Iterable,
+                bathy_profil: tuple[list[float], np.ndarray[float], np.ndarray[float]],
                 sound_speed: np.ndarray,
-                z_transect: np.ndarray,
                 param_seabed: pd.Series,
                 croco_data: pd.Series,
                 param_water: pd.Series,
-                yday: int,
+                year_day: int,
                 ) -> list[tuple[float]]:
     """Run the Bellhop acoustic model to compute underwater sound propagation.
 
@@ -319,8 +311,8 @@ def run_bellhop(executable: Path,
     ----------
     executable : Path
         Path to the Bellhop executable file.
-    bellhop_dir : Path
-        Directory where Bellhop input and output files will be stored.
+    bellhop_dir: Path
+        Directory where Bellhop input/output files will be stored.
     filename : str
         Base name for the Bellhop files (without extension).
     calc : str or list of str
@@ -332,23 +324,22 @@ def run_bellhop(executable: Path,
         A Pandas Series containing source parameters.
     station : pd.Series
         A Pandas Series containing station parameters.
-    dist : np.array
-        A NumPy array representing distances along the propagation path.
-    zb : list
-        A list containing bathymetric depth values along the path.
+    bathy_profil : tuple[list[float], np.ndarray[float], np.ndarray[float]]
+        A tuple containing:
+        - zb : list containing the bathymetric depth values along the transect,
+        - dist : NumPy array representing distances along the propagation path,
+        - z_transect : NumPy array representing the 32 vertical depth (z) coordinates
+        of the propagation path.
     sound_speed : np.array
         A NumPy array containing the sound speed profile at different depths.
-    z_transect : np.array
-        A NumPy array representing the vertical depth (z) coordinates
-        of the propagation path.
     param_seabed : pd.Series
         A Pandas Series containing seabed parameters.
     croco_data : serie
         A Pandas Series containing temperature and salinity over 721 days
-        (years of 360 days), at 32 depths, 109 tatitudes and 95 longitudes
+        (years of 360 days), at 32 depths, 109 latitudes and 95 longitudes
     param_water : serie
         water parameters (salinity, temperature, ph)
-    yday : int
+    year_day : int
         Day of the year.
 
 
@@ -362,7 +353,7 @@ def run_bellhop(executable: Path,
     - This function does not return anything but generates output files
     from the Bellhop model.
     - Generates output files :
-        'I' option : generates a .shd file, containing the pressure field.
+        'I' option : generates a .shd file, containing the incoherent pressure field.
            The data is extracted to calculate and plot the transmission loss diagram
         'E' option : generates a .ray file, containing the information about eigenrays
            (rays that connect the source and the receiver).
@@ -370,10 +361,8 @@ def run_bellhop(executable: Path,
             the rays emitted (arrival delay, amplitude...)
 
     """
-    # Compute central frequency of the sound source
-    f_cen = int((source["f_min"] + source["f_max"]) / 2)
-    a = station.distance
-    # Define the number of bathymetry points (ensuring at least 15 points)
+    zb, dist, z_transect = bathy_profil
+    a = station.distance  # Define the number of bathymetry points (min 15 points)
     nb_p = max(15, int(10 * a))  # Sampling at 100m intervals
 
     # Compute the number of rays based on distance (one ray per 25 meters)
@@ -388,20 +377,19 @@ def run_bellhop(executable: Path,
     for c in calc:
         # Generate Bellhop environment file
         envfil = write_env_file(bellhop_dir,
-            f"{filename}{c}",
-            f_cen,
-            source,
-            station,
-            sound_speed,
-            z_transect,
-            nb_ray,
-            z_max,
-            param_seabed,
-            f"{c}",
-            croco_data,
-            param_water,
-            yday,
-        )
+                                f"{filename}{c}",
+                                source,
+                                station,
+                                sound_speed,
+                                z_transect,
+                                nb_ray,
+                                z_max,
+                                param_seabed,
+                           f"{c}",
+                                croco_data,
+                                param_water,
+                                year_day,
+                                )
 
         # check environment file syntax then parse its content
         env_data.append(read_env(envfil))
@@ -419,9 +407,13 @@ def run_bellhop(executable: Path,
     return env_data
 
 
-def impulse_response(file: Path, source: dict[str, float], station: dict[str, float],
-                     param_water: dict[str, float], param_seabed: Series,
-                     param_env: float) -> tuple[np.ndarray[np.float64], np.ndarray[
+def impulse_response(file: Path,
+                     source: dict[str, float],
+                     station: dict[str, float],
+                     param_water: dict[str, float],
+                     param_seabed: Series,
+                     param_env: float,
+                     ) -> tuple[np.ndarray[np.float64], np.ndarray[
                      np.complex128], np.ndarray[np.float64], np.ndarray[np.float64],
                      np.ndarray[np.complex128]]:
     """Reconstruct the received signal.
@@ -440,15 +432,13 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
         Dictionary containing information about the receivers (stations)
     param_water : dict
         Dictionary containing information about water parameters
-    param_seabed : Series
+    param_seabed : Series.
         Series containing seabed parameters
     param_env : float
         Wind speed
 
     Returns
     -------
-    s_emis : ndarray [float]
-        Emitted signal
     ri_t : ndarray [complex]
         Received signal, time response
     t_ri : ndarray [float]
@@ -459,8 +449,14 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
         Frequency response
 
     """
-    arr, _ = read_arrivals_asc(file)
+    arr = read_arr(file)
     arr: dict[str, np.ndarray]
+
+    param_seawater = Series({
+        "bulk_soundspeed": 1500,  # m/s
+        "bulk_density": 1,  # kg/m3
+        "attenuation": 0,  # dB/m
+         })
 
     d = 1000 * station["distance"]  # distance between the source and receiver
 
@@ -478,7 +474,7 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
 
     w = param_env
 
-    ta = d / np.cos(np.pi / 180 * grazing_angle) / 1500
+    ta = float(d / np.cos(np.pi / 180 * grazing_angle) / param_seawater["bulk_soundspeed"])
     # maximal duration of the wave path with a certain grazing angle
     nbp = 2 ** find_pow2((ta + 2 * t0) * samp_freq)  # number of points
     freq = np.arange(0, samp_freq, samp_freq / nbp)  # frequency axis
@@ -489,16 +485,16 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
     if source["type"] == "click_M":
         f0 = (fmin + fmax) / 2
         u = np.where(temp <= t0)
-        se = np.zeros(len(temp))
+        se = zeros(len(temp), 0)
         se[u] = np.blackman(len(u)) * np.sin(2 * np.pi * f0 * temp[u])
         se = fft(se) / (nbp / 2)
-        z0 = se
+        z0 = se  # z0=emitted signal
 
     # and on a chirp signal if the signal is a dolphin whistle
     elif source["type"] == "whistle_D":
         u = np.where(temp <= t0)
         z0 = chirp(temp[u], fmin, t0, fmax, "li")
-        se = np.concatenate((z0, np.zeros(len(temp) - len(z0))), axis=0)
+        se = np.concatenate((z0, zeros(len(temp) - len(z0), 0)), axis=0)
         se = fft(se) / (nbp / 2)
 
     else:
@@ -506,51 +502,38 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
         raise ValueError(msg)
 
     t = np.squeeze(arr["delay"].real)  # arrival time
-    tet = np.squeeze(1 / 2 * (abs(arr["src_angle"]) + abs(arr["rcvr_angle"])))
+    tet = np.squeeze(1 / 2 * (abs(arr["src_angle"]) + abs(arr["rcv_angle"])))
     # average ray angle at the interferences
     dis = 1500 * t  # distance traveled (m)
-    ns = np.squeeze(arr["num_top_bnc"])  # number of top reflections
-    nb = np.squeeze(arr["num_bot_bnc"])  # number of bottom reflexions
+    ns = np.squeeze(arr["nb_top_bnc"])  # number of top reflections
+    nb = np.squeeze(arr["nb_bot_bnc"])  # number of bottom reflexions
 
     # loop on frequency
     n1 = np.where(freq >= fmin)[0][0]
     n2 = np.where(freq >= fmax)[0][0]
     n_win = n2 - n1 + 1
-    inc = 0
     tmin0 = 0
-    y = np.zeros((len(freq), len(t))) + 1j * np.zeros((len(freq), len(t)))
+    y = zeros((len(freq), len(t)), 1)
 
     if ponder == 1:
-        se[n1:n2] = np.hamming(n_win - 1) * se[n1:n2]
-
-    param_seawater = Series({
-        "bulk_soundspeed": 1500,  # m/s
-        "bulk_density": 1,  # kg/m3
-        "attenuation": 0,  # dB/m
-    })
-
-    param_seawater = Series({
-        "bulk_soundspeed": 1500,  # m/s
-        "bulk_density": 1,  # kg/m3
-        "attenuation": 0,  # dB/m
-    })
+        se[n1:n2] = np.blackman(n_win - 1) * se[n1:n2]
 
     # frequency response
     for ni in np.arange(n1, n2 + 1):
-        inc += 1  # noqa: SIM113
         fk = freq[ni] / 1000
         rs = -surface_reflection_coefficient(tet, w, fk)  # surface reflexion
 
         # bottom reflexion
-        rb = bottom_reflection_coefficient(
+        rb = [bottom_reflection_coefficient(
                 tet,
                 param_seawater,
                 param_seabed,
                 freq[ni],
-            )
+            ),
+        ]
 
-        atv = atten_fg(fk, salinity, temperature, 10, ph) * dis / 1000  # attenuation dB
-        atten = np.exp(-atv * np.log(10) / 20)  # attenuation (Np)
+        att_db = atten_fg(fk, salinity, temperature, 10, ph) * dis / 1000  # attenuation dB
+        atten = np.exp(-att_db * np.log(10) / 20)  # attenuation (Np)
         y[ni, :] = (se[ni] * atten * (rs**ns) * (rb**nb) *
                    np.exp(-1j * 2 * np.pi * freq[ni] * (t - tmin0)))  # *se[ni]*
 
@@ -558,14 +541,11 @@ def impulse_response(file: Path, source: dict[str, float], station: dict[str, fl
     spec[0] = 0
     spec[n2] = 0
     mil = round(len(freq) / 2)
-    toto = spec[:mil].conj()
-    spec[mil:] = np.flipud(toto)
+    spec[mil:] = np.flipud(spec[:mil].conj())
 
     ri_t = ifft(spec)  # /(nbp/2)
-
     t_ri = tmin0 + temp  # time axis
     f_ri = freq  # frequency axis
-    ri_f = spec  # received spectr
-    s_emis = z0  # emitted signal
+    ri_f = spec  # received spectra
 
-    return s_emis, ri_t, t_ri, f_ri, ri_f
+    return ri_t, t_ri, f_ri, ri_f

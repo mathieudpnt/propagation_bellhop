@@ -7,14 +7,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    import _io
     from pathlib import Path
 
     from pandas import Series
 
 
 def depth_to_pressure(z: float, lat: float) -> float:
-    """Convert depth (m) to pressure (kPa) (Leroy & Parthiot, 1998).
+    """Calculate pressure (MPa) at a certain depth (m) (Leroy & Parthiot, 1998).
 
     Parameters
     ----------
@@ -264,9 +263,9 @@ def bottom_reflection_coefficient(
         Reflection coefficient for a fluid-fluid interface.
 
     """
-    c1 = para_1[0]  # soundspeed in the water
-    rho1 = para_1[1]  # density of the water
-    at1 = para_1[2]  # attenuation of the sound in the water (dB/lambda)
+    c1 = para_1.iloc[0]  # soundspeed in the water
+    rho1 = para_1.iloc[1]  # density of the water
+    at1 = para_1.iloc[2]  # attenuation of the sound in the water (dB/lambda)
 
     c2 = para_2.iloc[0]  # soundspeed in seabed
     rho2 = para_2.iloc[1]  # density of seabed
@@ -405,11 +404,6 @@ def find_pow2(x: float) -> int:
     return n
 
 
-def readline_1(fid: _io.TextIOWrapper, nb: int) -> float:
-    """Read element nb of a line."""
-    return float(fid.readline().split()[nb])
-
-
 def zeros(size: int, flag: int) -> np.ndarray:
     """Create an array of zeros, could be real (0) or complex (1)."""
     if flag == 1:  # if complex
@@ -418,7 +412,7 @@ def zeros(size: int, flag: int) -> np.ndarray:
 
 
 def date_to_number(m: int, d: int) -> int:
-    """Convert date to number in the year."""
+    """Convert date to number in the year regarding croco data."""
     return (m - 1) * 30 + d
 
 
