@@ -10,10 +10,9 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from matplotlib.axes import Axes
-
 from core_utils import readline_1, zeros
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
 from numpy import ndarray
 from reader_utils import read_arr, read_env, read_ray
 

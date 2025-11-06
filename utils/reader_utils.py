@@ -169,14 +169,14 @@ def read_arr(file: Path) -> dict:
         line = content[i].split()
         amp = (float(line[0]))
         phase = (float(line[1]))
-        delay_re[k]=(float(line[2]))
-        delay_im[k]=(float(line[3]))
-        src_ang[k]=(float(line[4]))
-        rcv_ang[k]=(float(line[5]))
+        delay_re[k] = (float(line[2]))
+        delay_im[k] = (float(line[3]))
+        src_ang[k] = (float(line[4]))
+        rcv_ang[k] = (float(line[5]))
         nb_top_bnc.append(int(line[6]))
         nb_bot_bnc.append(int(line[7]))
-        wave_eq[k]=(amp * np.exp(1j * phase * np.pi / 180.0))  # complex wave equation
-        delay[k]=(delay_re[k] + 1j * delay_im[k])  # complex delay
+        wave_eq[k] = (amp * np.exp(1j * phase * np.pi / 180.0))  # complex wave equation
+        delay[k] = (delay_re[k] + 1j * delay_im[k])  # complex delay
         k += 1
         i += 1
 
@@ -206,9 +206,7 @@ def read_arr(file: Path) -> dict:
         "nb_rcv_z": nb_rcv_z,
         "rcv_z": rcv_z,
         "nb_rcv_r": nb_rcv_r,
-        "rcv_r": rcv_r,
-        "amp": amp,
-        "phase": phase}
+        "rcv_r": rcv_r}
 
 
 
@@ -229,13 +227,13 @@ def read_ray(file: Path) -> dict:
     check_suffix(file, ".ray")
     content = read_bellhop_file(file)
 
-    title = content[0]
+    title = content[0].strip()
     frequency = float(content[1])
-    nb_coord = content[2]
-    nb_beam = content[3]
+    nb_coord = content[2].strip()
+    nb_beam = content[3].strip()
     top_depth = float(content[4])
     bottom_depth = float(content[5])
-    coord_type = read_coord_type(content[6])
+    coord_type = read_coord_type(content[6]).strip()
 
     ra = []
     za = []
