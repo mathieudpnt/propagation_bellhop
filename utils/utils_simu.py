@@ -27,6 +27,7 @@ from utils.core_utils import (
     find_nearest,
     find_pow2,
     surface_reflection_coefficient,
+    zeros,
 )
 from utils.reader_utils import read_arr, read_head_bty
 from utils.utils_acoustic_toolbox import write_env_file
@@ -382,7 +383,7 @@ def run_bellhop(roots: list[Path],
                                 nb_ray,
                                 z_max,
                                 param_seabed,
-            f"{c}",
+                           f"{c}",
                                 croco_data,
                                 param_water,
                                 year_day,
@@ -436,8 +437,6 @@ def impulse_response(file: Path,
 
     Returns
     -------
-    s_emis : ndarray [float]
-        Emitted signal
     ri_t : ndarray [complex]
         Received signal, time response
     t_ri : ndarray [float]
@@ -484,24 +483,23 @@ def impulse_response(file: Path,
     if source["type"] == "click_M":
         f0 = (fmin + fmax) / 2
         u = np.where(temp <= t0)
-        se = np.zeros(len(temp))
+        se = zeros(len(temp), 0)
         se[u] = np.blackman(len(u)) * np.sin(2 * np.pi * f0 * temp[u])
         se = fft(se) / (nbp / 2)
-        z0 = se
+        z0 = se  # z0=emitted signal
 
     # and on a chirp signal if the signal is a dolphin whistle
     elif source["type"] == "whistle_D":
         u = np.where(temp <= t0)
         z0 = chirp(temp[u], fmin, t0, fmax, "li")
-        se = np.concatenate((z0, np.zeros(len(temp) - len(z0))), axis=0)
+        se = np.concatenate((z0, zeros(len(temp) - len(z0), 0)), axis=0)
         se = fft(se) / (nbp / 2)
 
     else:
         msg = "Invalid source type. Source type must be 'click_M' or 'whistle_D'."
         raise ValueError(msg)
 
-    delay = np.array(arr["delay"])
-    t = np.squeeze(delay.real)  # arrival time
+    t = np.squeeze(arr["delay"].real)  # arrival time
     tet = np.squeeze(1 / 2 * (abs(arr["src_angle"]) + abs(arr["rcv_angle"])))
     # average ray angle at the interferences
     dis = 1500 * t  # distance traveled (m)
@@ -512,16 +510,14 @@ def impulse_response(file: Path,
     n1 = np.where(freq >= fmin)[0][0]
     n2 = np.where(freq >= fmax)[0][0]
     n_win = n2 - n1 + 1
-    inc = 0
     tmin0 = 0
-    y = np.zeros((len(freq), len(t))) + 1j * np.zeros((len(freq), len(t)))
+    y = zeros((len(freq), len(t)), 1)
 
     if ponder == 1:
-        se[n1:n2] = np.hamming(n_win - 1) * se[n1:n2]
+        se[n1:n2] = np.blackman(n_win - 1) * se[n1:n2]
 
     # frequency response
     for ni in np.arange(n1, n2 + 1):
-        inc += 1  # noqa: SIM113
         fk = freq[ni] / 1000
         rs = -surface_reflection_coefficient(tet, w, fk)  # surface reflexion
 
@@ -534,8 +530,8 @@ def impulse_response(file: Path,
             ),
         ]
 
-        atv = atten_fg(fk, salinity, temperature, 10, ph) * dis / 1000  # attenuation dB
-        atten = np.exp(-atv * np.log(10) / 20)  # attenuation (Np)
+        att_db = atten_fg(fk, salinity, temperature, 10, ph) * dis / 1000  # attenuation dB
+        atten = np.exp(-att_db * np.log(10) / 20)  # attenuation (Np)
         y[ni, :] = (se[ni] * atten * (rs**ns) * (rb**nb) *
                    np.exp(-1j * 2 * np.pi * freq[ni] * (t - tmin0)))  # *se[ni]*
 
@@ -543,14 +539,11 @@ def impulse_response(file: Path,
     spec[0] = 0
     spec[n2] = 0
     mil = round(len(freq) / 2)
-    toto = spec[:mil].conj()
-    spec[mil:] = np.flipud(toto)
+    spec[mil:] = np.flipud(spec[:mil].conj())
 
     ri_t = ifft(spec)  # /(nbp/2)
-
     t_ri = tmin0 + temp  # time axis
     f_ri = freq  # frequency axis
-    ri_f = spec  # received spectr
-    s_emis = z0  # emitted signal
+    ri_f = spec  # received spectra
 
-    return s_emis, ri_t, t_ri, f_ri, ri_f
+    return ri_t, t_ri, f_ri, ri_f

@@ -35,7 +35,7 @@ def read_bellhop_file(file: Path) -> list[str]:
         The content of the environmental file.
 
     """
-    if file.suffix not in {".env", ".arr", ".bty", ".ray"}:
+    if file.suffix not in {".env", ".arr", ".asc", ".ray"}:
         msg = f"{file} is not a Bellhop file."
         raise ValueError(msg)
     check_file_exist(file)

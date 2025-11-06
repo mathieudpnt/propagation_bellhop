@@ -412,7 +412,7 @@ def zeros(size: int, flag: int) -> np.ndarray:
 
 
 def date_to_number(m: int, d: int) -> int:
-    """Convert date to number in the year."""
+    """Convert date to number in the year regarding croco data."""
     return (m - 1) * 30 + d
 
 
