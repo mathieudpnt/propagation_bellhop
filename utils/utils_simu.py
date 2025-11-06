@@ -95,8 +95,10 @@ def read_croco(file: Path) -> CrocoData:
                      depth=depth, lon=lon, lat=lat)
 
 
-def read_bathy(file: Path, lim_lat: list[float], lim_lon: list[float]) -> ndarray[tuple
-    [Any, ...], Any]:
+def read_bathy(file: Path,
+               lim_lat: list[float],
+               lim_lon: list[float]
+               ) -> ndarray[tuple[Any, ...], Any]:
     """Read a bathymetric file and extracts information.
 
     Extracts the data that falls within the specified latitude and longitude limits.
@@ -284,13 +286,14 @@ def sound_speed_profile(method: str, yday: int, z: np.array, ref_coord: tuple
             for sal, temp, z_i in zip(salinity, temperature, z, strict=False)]
 
 
-def run_bellhop(roots: list[Path],
+def run_bellhop(executable: Path,
+                bellhop_dir: Path,
                 filename: str,
                 calc: str | list[str],
                 z_max: float,
                 source: pd.Series,
                 station: pd.Series,
-                bathy: tuple[list[float], np.ndarray[float], np.ndarray[float]],
+                bathy_profil: tuple[list[float], np.ndarray[float], np.ndarray[float]],
                 sound_speed: np.ndarray,
                 param_seabed: pd.Series,
                 croco_data: pd.Series,
@@ -306,10 +309,10 @@ def run_bellhop(roots: list[Path],
 
     Parameters
     ----------
-    roots : list[Path]
-        List of paths containing :
-            - executable : Path to the Bellhop executable file.
-            - bellhop_dir : Directory where Bellhop input/output files will be stored.
+    executable : Path
+        Path to the Bellhop executable file.
+    bellhop_dir: Path
+        Directory where Bellhop input/output files will be stored.
     filename : str
         Base name for the Bellhop files (without extension).
     calc : str or list of str
@@ -321,7 +324,7 @@ def run_bellhop(roots: list[Path],
         A Pandas Series containing source parameters.
     station : pd.Series
         A Pandas Series containing station parameters.
-    bathy : tuple[list[float], np.ndarray[float], np.ndarray[float]]
+    bathy_profil : tuple[list[float], np.ndarray[float], np.ndarray[float]]
         A tuple containing:
         - zb : list containing the bathymetric depth values along the transect,
         - dist : NumPy array representing distances along the propagation path,
@@ -333,7 +336,7 @@ def run_bellhop(roots: list[Path],
         A Pandas Series containing seabed parameters.
     croco_data : serie
         A Pandas Series containing temperature and salinity over 721 days
-        (years of 360 days), at 32 depths, 109 tatitudes and 95 longitudes
+        (years of 360 days), at 32 depths, 109 latitudes and 95 longitudes
     param_water : serie
         water parameters (salinity, temperature, ph)
     year_day : int
@@ -358,8 +361,7 @@ def run_bellhop(roots: list[Path],
             the rays emitted (arrival delay, amplitude...)
 
     """
-    zb, dist, z_transect = bathy
-    executable, bellhop_dir = roots
+    zb, dist, z_transect = bathy_profil
     a = station.distance  # Define the number of bathymetry points (min 15 points)
     nb_p = max(15, int(10 * a))  # Sampling at 100m intervals
 
