@@ -333,41 +333,37 @@ def test_read_coord(line: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("r", "rmax", "nsteps", "expected"),
+    ("r", "nb_steps", "expected"),
     [
         pytest.param(
             [1, 2, 5, 1781],
-            1781,
             4,
             nullcontext([1, 2, 5, 1781]),
-            id="Valide depth",
+            id="Valid depth",
         ),
         pytest.param(
-            [1, 2, 5, 9],
-            1781,
+            [-20, -10, -5, -1],
             4,
-            pytest.raises(ValueError, match="Invalid maximal range"),
-            id="Maximal range must be rmax",
+            pytest.raises(ValueError, match="Invalid maximal range: negative value"),
+            id="range must be positive",
         ),
         pytest.param(
             [1, 2, 1781, 9],
-            1781,
             4,
-            pytest.raises(ValueError, match="Invalid range line"),
+            pytest.raises(ValueError, match="Invalid range line: non increasing"),
             id="range must be increasing",
         ),
         pytest.param(
             [1, 2, 1781],
-            1781,
             4,
-            pytest.raises(ValueError, match="Invalid range lenght"),
-            id="r must contain nsteps values",
+            pytest.raises(ValueError, match="Invalid range length: wrong length"),
+            id="r must contain nb_steps values",
         ),
     ],
 )
-def test_read_r(r: ndarray, rmax: float, nsteps: str, expected: str) -> None:
+def test_read_r(r: ndarray, nb_steps: str, expected: str) -> None:
     with expected as e:
-        assert read_r(r, rmax, nsteps) == e
+        assert read_r(r, nb_steps) == e
 
 
 @pytest.mark.parametrize(

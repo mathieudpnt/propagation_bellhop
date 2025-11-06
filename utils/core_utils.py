@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    import _io
     from pathlib import Path
 
     from pandas import Series
@@ -403,11 +402,6 @@ def find_pow2(x: float) -> int:
         p *= 2
         n += 1
     return n
-
-
-def readline_1(fid: _io.TextIOWrapper, nb: int) -> float:
-    """Read element nb of a line."""
-    return float(fid.readline().split()[nb])
 
 
 def zeros(size: int, flag: int) -> np.ndarray:
