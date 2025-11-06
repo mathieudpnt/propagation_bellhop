@@ -448,8 +448,14 @@ def impulse_response(file: Path,
         Frequency response
 
     """
-    arr, _ = read_arr(file)
+    arr = read_arr(file)
     arr: dict[str, np.ndarray]
+
+    param_seawater = Series({
+        "bulk_soundspeed": 1500,  # m/s
+        "bulk_density": 1,  # kg/m3
+        "attenuation": 0,  # dB/m
+         })
 
     d = 1000 * station["distance"]  # distance between the source and receiver
 
@@ -467,7 +473,7 @@ def impulse_response(file: Path,
 
     w = param_env
 
-    ta = float(d / np.cos(np.pi / 180 * grazing_angle) / 1500)
+    ta = float(d / np.cos(np.pi / 180 * grazing_angle) / param_seawater["bulk_soundspeed"])
     # maximal duration of the wave path with a certain grazing angle
     nbp = 2 ** find_pow2((ta + 2 * t0) * samp_freq)  # number of points
     freq = np.arange(0, samp_freq, samp_freq / nbp)  # frequency axis
@@ -512,18 +518,6 @@ def impulse_response(file: Path,
 
     if ponder == 1:
         se[n1:n2] = np.hamming(n_win - 1) * se[n1:n2]
-
-    param_seawater = Series({
-        "bulk_soundspeed": 1500,  # m/s
-        "bulk_density": 1,  # kg/m3
-        "attenuation": 0,  # dB/m
-    })
-
-    param_seawater = Series({
-        "bulk_soundspeed": 1500,  # m/s
-        "bulk_density": 1,  # kg/m3
-        "attenuation": 0,  # dB/m
-    })
 
     # frequency response
     for ni in np.arange(n1, n2 + 1):

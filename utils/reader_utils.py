@@ -10,7 +10,8 @@ from core_utils import (
     check_empty_file,
     check_file_exist,
     check_len_list,
-    check_suffix, zeros
+    check_suffix,
+    zeros,
 )
 from numpy import ndarray
 
@@ -130,17 +131,12 @@ def read_arr(file: Path) -> dict:
     Parameters
     ----------
     file : Path
-        Path and name of the .asc file to read
+        Path of the .arr file to read
 
     Returns
     -------
-    arr : ndarray
+    arrivals : ndarray
         Array that contains information about the rays path
-        (total number of studied rays, wave equation,
-        complex delay, departure angle, arrival angle,
-        number of top reflexions, number of bottom reflexions)
-    content : list
-        Other information in the file.
 
     """
     check_suffix(file, ".arr")
@@ -191,23 +187,22 @@ def read_arr(file: Path) -> dict:
         msg = "Inconsistent length"
         raise ValueError(msg)
 
-    arr = {"nb_arr": nb_arr,
-           "wave_eq": wave_eq,
-           "delay": delay,
-           "src_angle": src_ang,
-           "rcv_angle": rcv_ang,
-           "nb_top_bnc": nb_top_bnc,
-           "nb_bot_bnc": nb_bot_bnc}
-
-    return arr, {"dim": dim,
-        "frequency": frequency,
-        "nb_src": nb_src,
-        "src_z": src_z,
-        "nb_rcv_z": nb_rcv_z,
-        "rcv_z": rcv_z,
-        "nb_rcv_r": nb_rcv_r,
-        "rcv_r": rcv_r}
-
+    return {"nb_arr": nb_arr,
+            "wave_eq": wave_eq,
+            "delay": delay,
+            "src_angle": src_ang,
+            "rcv_angle": rcv_ang,
+            "nb_top_bnc": nb_top_bnc,
+            "nb_bot_bnc": nb_bot_bnc,
+            "dim": dim,
+            "frequency": frequency,
+            "nb_src": nb_src,
+            "src_z": src_z,
+            "nb_rcv_z": nb_rcv_z,
+            "rcv_z": rcv_z,
+            "nb_rcv_r": nb_rcv_r,
+            "rcv_r": rcv_r,
+            }
 
 
 def read_ray(file: Path) -> dict:
